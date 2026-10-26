@@ -153,23 +153,36 @@
     if (mot) questions.push(mot);   // 插在最后：真实面试里动机题多在技术问完后
   }
 
-  // 规则模式（未开 AI 对话）下，用匹配阶段得到的「深挖点」补一道简历题，
-  // 让至少有一题围绕候选人真实经历展开；LLM 模式由 system prompt 自然覆盖，无需替换。
+  // 规则模式（未开 AI 对话）下，用匹配阶段得到的「深挖点」补简历题。
+  // 默认访客大多是规则模式，只补 1 道太薄；补 2 道并错开位置，避免连问两句同一句式。
+  // LLM 模式由 system prompt 自然覆盖，无需替换题库题。
+  function makeResumeQuestion(probe, variant) {
+    const q = variant === 2
+      ? '你简历里提到「' + probe + '」。这件事里最难处理的一处是什么？你当时怎么判断、怎么取舍的，最后效果如何？'
+      : '你简历里提到「' + probe + '」。请具体讲讲：你当时负责哪一部分、怎么做的、最后结果如何？';
+    return {
+      id: null,
+      type: '简历深挖',
+      level: level,
+      difficulty: '中等',
+      q: q,
+      intent: '基于候选人简历深挖真实经历，考察是否亲历、细节是否清晰、面对取舍的判断力与可验证的结果',
+      followups: [],
+      keywords: [],
+      minutes: 5,
+      _resume: true
+    };
+  }
+
   if (!customMode && !useLLM && resumeCtx) {
     const probes = ((resumeCtx.match && resumeCtx.match.probe_points) || []).filter(Boolean);
     if (probes.length && questions.length) {
-      questions[0] = {
-        id: null,
-        type: '简历深挖',
-        level: level,
-        difficulty: '中等',
-        q: '你简历里提到「' + probes[0] + '」。请具体讲讲：你当时负责哪一部分、怎么做的、最后结果如何？',
-        intent: '基于候选人简历深挖真实经历，考察是否亲历、细节是否清晰、有无可验证的结果',
-        followups: [],
-        keywords: [],
-        minutes: 5,
-        _resume: true
-      };
+      questions[0] = makeResumeQuestion(probes[0], 1);
+      // 第二道放在中间位置（不碰末位动机题），且避免与首题相邻
+      if (probes.length > 1 && questions.length >= 4) {
+        const slot = Math.min(2, questions.length - 2);
+        if (slot > 0) questions[slot] = makeResumeQuestion(probes[1], 2);
+      }
     }
   }
 
