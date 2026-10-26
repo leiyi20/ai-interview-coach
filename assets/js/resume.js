@@ -41,11 +41,17 @@
   const $actions = document.getElementById('rs-actions');
   const $formCard = document.getElementById('rs-form-card');
 
-  $pos.innerHTML =
-    '<span class="rs-pill">行业 <b>' + esc(industry) + '</b></span>' +
-    '<span class="rs-pill">岗位 <b>' + esc(role) + '</b></span>' +
-    '<span class="rs-pill">层级 <b>' + esc(level) + '</b></span>' +
-    '<span class="rs-pill">档位 <b>' + esc(tierName) + '</b></span>';
+  // 当前目标岗位（可切换）——不匹配时在停止页直接换岗位重跑，简历不必重新粘贴
+  let curIndustry = industry, curRole = role, curLevel = level, curRoleData = roleData;
+
+  function renderPos() {
+    $pos.innerHTML =
+      '<span class="rs-pill">行业 <b>' + esc(curIndustry) + '</b></span>' +
+      '<span class="rs-pill">岗位 <b>' + esc(curRole) + '</b></span>' +
+      '<span class="rs-pill">层级 <b>' + esc(curLevel) + '</b></span>' +
+      '<span class="rs-pill">档位 <b>' + esc(tierName) + '</b></span>';
+  }
+  renderPos();
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -61,7 +67,7 @@
   }
 
   function interviewUrl(extra) {
-    const p = new URLSearchParams({ industry, role, level, tier: tierKey });
+    const p = new URLSearchParams({ industry: curIndustry, role: curRole, level: curLevel, tier: tierKey });
     if (depth && depth !== 'auto') p.set('depth', depth);
     Object.keys(extra || {}).forEach(k => { if (extra[k]) p.set(k, extra[k]); });
     return 'interview.html?' + p.toString();
@@ -72,9 +78,9 @@
       sessionStorage.setItem('wb_resume', JSON.stringify({
         text: text,
         match: match,
-        industry: industry,
-        role: role,
-        level: level,
+        industry: curIndustry,
+        role: curRole,
+        level: curLevel,
         tier: tierKey,
         lowMatch: !match.pass,
         forced: !!forced,
@@ -93,7 +99,7 @@
   // ---- 跳过简历 ----
   $skip.addEventListener('click', () => {
     try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ }
-    track('resume_skip', { role: role, industry: industry });
+    track('resume_skip', { role: curRole, industry: curIndustry });
     location.href = interviewUrl();
   });
 
@@ -206,9 +212,16 @@
         '</div>';
     } else {
       actionsHTML =
+        '<div class="rs-switch">' +
+        '<div class="rs-switch-title">换个更合适的岗位，用这份简历重新匹配（不用重新粘贴）：</div>' +
+        '<div class="rs-switch-row">' +
+        '<select id="rs-sw-ind"></select>' +
+        '<select id="rs-sw-role"></select>' +
+        '<button class="btn btn-primary btn-sm" id="rs-sw-go">重新匹配 →</button>' +
+        '</div></div>' +
         '<div class="rs-result-actions">' +
-        '<a class="btn btn-primary" href="index.html">换个岗位试试</a>' +
         '<button class="btn btn-ghost" id="rs-retry">重新填写简历</button>' +
+        '<a class="btn btn-ghost" href="index.html">回首页换行业</a>' +
         '</div>' +
         '<button class="rs-force" id="rs-force">我了解风险，仍要继续这场面试 →</button>';
     }
@@ -256,18 +269,69 @@
         track('resume_match', { engine: match.engine, score: match.score, pass: false, forced: true });
         location.href = interviewUrl({ resume: '1', lowmatch: '1' });
       });
+      bindSwitcher(text);
     }
     $result.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  $go.addEventListener('click', async () => {
-    const text = $text.value.trim();
-    if (text.length < (window.ResumeMatcher ? ResumeMatcher.MIN_RESUME : 30)) {
-      setMsg('简历还太短，至少写 30 字：教育背景、工作经历或项目经历都行。', 'err');
-      $text.focus();
-      return;
-    }
+  // 停止页的「换岗位」选择器：切换行业/岗位后原地重跑匹配，简历始终留在页面上
+  function bindSwitcher(text) {
+    const $ind = document.getElementById('rs-sw-ind');
+    const $role = document.getElementById('rs-sw-role');
+    const $swGo = document.getElementById('rs-sw-go');
+    if (!$ind || !$role || !$swGo) return;
 
+    const inds = D.listIndustries().slice();
+    $ind.innerHTML = inds.map(i => '<option value="' + esc(i) + '"' + (i === curIndustry ? ' selected' : '') + '>' + esc(i) + '</option>').join('');
+    $role.innerHTML = D.listRoles($ind.value).map(r => '<option value="' + esc(r) + '"' + (r === curRole ? ' selected' : '') + '>' + esc(r) + '</option>').join('');
+
+    $ind.addEventListener('change', async () => {
+      $role.disabled = true;
+      try {
+        await D.loadIndustry($ind.value);
+        $role.innerHTML = D.listRoles($ind.value).map(r => '<option value="' + esc(r) + '">' + esc(r) + '</option>').join('');
+      } catch (e) {
+        $role.innerHTML = '';
+      } finally {
+        $role.disabled = false;
+      }
+    });
+
+    $swGo.addEventListener('click', async () => {
+      const ni = $ind.value, nr = $role.value;
+      if (!ni || !nr) return;
+      if (ni === curIndustry && nr === curRole) {
+        setMsg('已经选的是这个岗位了，换一个试试。', 'err');
+        return;
+      }
+      $swGo.disabled = true;
+      const old = $swGo.textContent;
+      $swGo.textContent = '匹配中…';
+      try {
+        await D.loadIndustry(ni);
+        const rd = D.getRole(ni, nr);
+        if (!rd) { setMsg('该岗位暂无题库数据，换一个试试。', 'err'); return; }
+        curIndustry = ni;
+        curRole = nr;
+        curRoleData = rd;
+        const lvls = D.listLevels(ni, nr);
+        curLevel = lvls.indexOf(curLevel) >= 0 ? curLevel : (lvls[0] || '通用');
+        renderPos();
+        try {
+          const p = new URLSearchParams({ industry: ni, role: nr, level: curLevel, tier: tierKey });
+          if (depth && depth !== 'auto') p.set('depth', depth);
+          history.replaceState(null, '', 'resume.html?' + p.toString());
+        } catch (e) { /* ignore */ }
+        track('resume_switch_role', { industry: ni, role: nr });
+        await runMatch(text);
+      } finally {
+        $swGo.disabled = false;
+        $swGo.textContent = old;
+      }
+    });
+  }
+
+  async function runMatch(text) {
     $go.disabled = true;
     const oldLabel = $go.textContent;
     $go.textContent = 'AI 正在比对简历与岗位…';
@@ -276,7 +340,7 @@
     let match;
     try {
       match = await ResumeMatcher.check(text, {
-        industry: industry, role: role, level: level, roleData: roleData
+        industry: curIndustry, role: curRole, level: curLevel, roleData: curRoleData
       });
     } catch (e) {
       match = {
@@ -294,5 +358,15 @@
       return;
     }
     renderResult(match, text);
+  }
+
+  $go.addEventListener('click', () => {
+    const text = $text.value.trim();
+    if (text.length < (window.ResumeMatcher ? ResumeMatcher.MIN_RESUME : 30)) {
+      setMsg('简历还太短，至少写 30 字：教育背景、工作经历或项目经历都行。', 'err');
+      $text.focus();
+      return;
+    }
+    runMatch(text);
   });
 })();
