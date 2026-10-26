@@ -39,6 +39,7 @@
   const $msg = document.getElementById('rs-msg');
   const $result = document.getElementById('rs-result');
   const $actions = document.getElementById('rs-actions');
+  const $formCard = document.getElementById('rs-form-card');
 
   $pos.innerHTML =
     '<span class="rs-pill">行业 <b>' + esc(industry) + '</b></span>' +
@@ -191,7 +192,8 @@
         arr.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
     };
 
-    const probe = listHTML('面试会重点深挖（来自你的简历）', match.probe_points, 'probe');
+    // 只有通过（或强行继续）时才展示深挖点；不匹配时面试不会开始，展示会误导
+    const probe = passed ? listHTML('面试会重点深挖（来自你的简历）', match.probe_points, 'probe') : '';
     const hits = listHTML('与你岗位相符的点', match.hits);
     const gaps = listHTML('相对岗位要求的缺口', match.gaps);
 
@@ -229,6 +231,7 @@
 
     $result.classList.add('show');
     if ($actions) $actions.style.display = 'none';
+    if ($formCard) $formCard.style.display = 'none';
     setMsg('');
 
     if (passed) {
@@ -243,6 +246,7 @@
       if ($retry) $retry.addEventListener('click', () => {
         $result.classList.remove('show');
         if ($actions) $actions.style.display = '';
+        if ($formCard) $formCard.style.display = '';
         $text.focus();
         $text.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
