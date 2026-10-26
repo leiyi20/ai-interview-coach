@@ -290,6 +290,19 @@
   }
 
   // 自创面试官的标签 + 结论置信度提示
+  // 简历定制标记：让候选人看到这场是按自己简历出的题
+  // 低匹配的情况由顶部黄色提示负责，这里不重复
+  function resumeBadge(R) {
+    const r = R.resume;
+    if (!r || r.lowMatch) return '';
+    const sc = (r.score != null) ? (' · 匹配度 ' + r.score + '/100') : '';
+    const probes = (r.probes || []).filter(Boolean).slice(0, 3);
+    return '<div class="resume-badge">按简历定制' + sc + '</div>' +
+      (probes.length
+        ? '<div class="resume-badge-sub">重点深挖：' + probes.map(escapeHtml).join('、') + '</div>'
+        : '');
+  }
+
   function customBadge(R) {
     if (!R.customMode) return '';
     const name = (R.persona && R.persona.name) ? '（' + escapeHtml(R.persona.name) + '）' : '';
@@ -375,6 +388,7 @@
         <div>
           <div class="verdict ${R.verdict.cls}">${R.verdict.label}</div>
           ${customBadge(R)}
+          ${resumeBadge(R)}
           ${bandBlock(R, norms)}
           <div style="margin-top:14px;">
             <a class="btn" href="index.html">再模拟一次</a>
