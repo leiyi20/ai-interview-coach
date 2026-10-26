@@ -33,8 +33,24 @@
       if (raw) {
         const r = JSON.parse(raw);
         if (r && r.text && r.role === role && r.industry === industry) resumeCtx = r;
+        else sessionStorage.removeItem('wb_resume');   // 陈旧 / 串岗数据：直接用不上，清掉
       }
-    } catch (e) { resumeCtx = null; }
+    } catch (e) {
+      resumeCtx = null;
+      try { sessionStorage.removeItem('wb_resume'); } catch (e2) { /* ignore */ }
+    }
+  } else {
+    // 自创面试官不使用简历，残留数据不留
+    try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ }
+  }
+
+  // 隐私：简历原文只在本次面试期间保留。离开页面（跳转 / 返回 / 关闭标签页）立即清除，
+  // 与简历页「离开页面或关闭标签页即清除」的承诺一致。
+  // 刻意不用 visibilitychange——用户只是切到别的标签页时不该丢掉简历。
+  if (resumeCtx) {
+    const clearResume = () => { try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ } };
+    window.addEventListener('pagehide', clearResume);
+    window.addEventListener('beforeunload', clearResume);
   }
 
   // 只加载当前行业的题目（不再首屏拉全量题库）
