@@ -20,6 +20,7 @@
   const $lvl = document.getElementById('sel-level');
   const $grid = document.getElementById('tier-grid');
   const $start = document.getElementById('btn-start');
+  const $resumeBtn = document.getElementById('btn-resume');
   const $hint = document.getElementById('hint');
 
   let selectedTier = null;
@@ -106,18 +107,17 @@
   function updateHint() {
     const ready = $role.value && $lvl.value && selectedTier;
     $start.disabled = !ready;
+    if ($resumeBtn) $resumeBtn.disabled = !ready;
     if (ready) {
       const tname = tierData[selectedTier].name.split('（')[0];
-      $hint.textContent = `即将进入「${$role.value} · ${$lvl.value} · ${tname}」：下一步提交简历，AI 会先判断匹配度，再按你的经历出题`;
+      $hint.textContent = `即将进入「${$role.value} · ${$lvl.value} · ${tname}」的对话式模拟面试`;
     } else {
       $hint.textContent = selectedTier ? '' : '请选择一个公司档位';
     }
   }
 
-  $ind.addEventListener('change', fillRoles);
-  $role.addEventListener('change', fillLevels);
-
-  $start.addEventListener('click', () => {
+  // 组装面试参数（直连面试与走简历页共用）
+  function interviewParams() {
     const params = new URLSearchParams({
       industry: $ind.value,
       role: $role.value,
@@ -127,9 +127,29 @@
     const $depth = document.getElementById('sel-depth');
     const dv = $depth ? $depth.value : 'auto';
     if (dv && dv !== 'auto') params.set('depth', dv);
-    // 先到简历页：AI 判定简历与岗位匹配度，通过后再进入面试
-    location.href = 'resume.html?' + params.toString();
+    return params;
+  }
+
+  $ind.addEventListener('change', fillRoles);
+  $role.addEventListener('change', fillLevels);
+
+  // 主入口：直接开面，简历不是必经步骤
+  $start.addEventListener('click', () => {
+    if (window.Analytics) window.Analytics.track('start_direct', {
+      role: $role.value, industry: $ind.value, tier: selectedTier
+    });
+    location.href = 'interview.html?' + interviewParams().toString();
   });
+
+  // 增强入口：先传简历做匹配，通过后再按简历出题
+  if ($resumeBtn) {
+    $resumeBtn.addEventListener('click', () => {
+      if (window.Analytics) window.Analytics.track('start_with_resume', {
+        role: $role.value, industry: $ind.value, tier: selectedTier
+      });
+      location.href = 'resume.html?' + interviewParams().toString();
+    });
+  }
 
   fillRoles();
 })();

@@ -27,7 +27,10 @@
   // 仅当岗位/行业与简历页一致时才使用，避免直接改 URL 导致简历串岗。
   // 只在本次面试内存中使用；结束写报告后即清除，不上传原始简历文本。
   let resumeCtx = null;
-  if (!customMode) {
+  // 简历是可选增强项：只有从简历页过来（URL 带 resume=1）才启用。
+  // 首页「开始模拟面试」直连本页时不带该参数，即使上次的简历还在 sessionStorage 也不会被误用。
+  const resumeEnabled = !customMode && qs.get('resume') === '1';
+  if (resumeEnabled) {
     try {
       const raw = sessionStorage.getItem('wb_resume');
       if (raw) {
@@ -566,8 +569,9 @@
     // 是否启用 AI 语义级评分：需开启评分开关且已配置可用大模型；否则走规则评分
     const useLLMScore = (typeof window.LLM !== 'undefined') && window.LLM.isScoreEnabled();
     let llmScores = null; // [{raw, comment}] 与 records 同序
+    let scoreFailReason = ''; // AI 评分失败原因（非空表示已降级为规则分）
     if (useLLMScore) {
-      await aiSay('我先按评分表逐题核对你的作答，然后生成综合评估，大约 15–25 秒，稍等…', '评分中');
+      await aiSay('我正在按评分表逐题核对你的作答，并生成综合评估。题数较多时通常需要 40–60 秒，请保持页面打开…', '评分中');
       try {
         const st = D.getScoring();
         const rubrics = (st && st.dimensions || []).map(d => ({
@@ -590,6 +594,8 @@
       } catch (e) {
         console.warn('AI 语义评分失败，回退规则评分：', e);
         llmScores = null;
+        // 记下失败原因：规则兜底不能静默进行，报告里要明确告诉用户这份分是怎么来的
+        scoreFailReason = (e && e.message) ? String(e.message).slice(0, 120) : '未知原因';
       }
     }
 
@@ -718,6 +724,7 @@
       scoreMeta: {
         mode: scoreMode,
         model: scoreMode === 'llm' ? ((window.LLM.load() || {}).model || 'hunyuan-chat') : null,
+        failReason: scoreFailReason || null,
         at: Date.now()
       },
       ts: Date.now()

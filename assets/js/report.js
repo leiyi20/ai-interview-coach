@@ -207,9 +207,12 @@
     const entries = Object.keys(w).map(k => k + ' ' + Math.round(w[k] * 100) + '%').join(' · ');
     if (!entries) return null;
     const meta = R.scoreMeta || {};
+    const failReason = meta.failReason ? String(meta.failReason) : '';
     const modeTxt = (R.scoreMode === 'llm')
       ? ('AI 语义评分' + (meta.model ? '（' + meta.model + '）' : ''))
-      : '规则关键词评分（仅供参考，建议开启 AI 语义评分）';
+      : (failReason
+        ? 'AI 评分未完成（' + failReason + '），已降级为规则关键词评分'
+        : '规则关键词评分（仅供参考，建议开启 AI 语义评分）');
     const el = document.createElement('div');
     el.className = 'card rubric-card';
     el.innerHTML = '<h3 class="advice-title">评分口径</h3>'
@@ -292,6 +295,17 @@
   // 自创面试官的标签 + 结论置信度提示
   // 简历定制标记：让候选人看到这场是按自己简历出的题
   // 低匹配的情况由顶部黄色提示负责，这里不重复
+  // 评分降级提示：AI 评分失败时明确告知，避免用户把规则参考分当成正式结论
+  function scoreFallbackNotice(R) {
+    if (R.scoreMode === 'llm') return '';
+    const reason = (R.scoreMeta && R.scoreMeta.failReason) ? String(R.scoreMeta.failReason) : '';
+    return '<div class="resume-badge" style="background:#fff4e0;color:#9a6400;border-color:#f7d9a8;">'
+      + '规则参考分 · AI 语义评分未完成'
+      + (reason ? '（' + escapeHtml(reason) + '）' : '')
+      + '<div class="resume-badge-sub">分数由关键词命中估算，不给出录用结论。可稍后重试一场以获得 AI 逐题点评。</div>'
+      + '</div>';
+  }
+
   function resumeBadge(R) {
     const r = R.resume;
     if (!r || r.lowMatch) return '';
@@ -389,6 +403,7 @@
           <div class="verdict ${R.verdict.cls}">${R.verdict.label}</div>
           ${customBadge(R)}
           ${resumeBadge(R)}
+          ${scoreFallbackNotice(R)}
           ${bandBlock(R, norms)}
           <div style="margin-top:14px;">
             <a class="btn" href="index.html">再模拟一次</a>
