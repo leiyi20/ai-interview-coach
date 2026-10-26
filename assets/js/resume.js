@@ -1,0 +1,294 @@
+/* ===== 简历提交页：输入 → 解析 → 双引擎匹配 → 通过/停止判定 ===== */
+(async function () {
+  Nav.render('resume.html');
+
+  const D = window.Data, C = window.SITE_CONFIG;
+  const qs = new URLSearchParams(location.search);
+
+  const industry = qs.get('industry') || C.BENCHMARK_INDUSTRY;
+  const role = qs.get('role') || '';
+  const level = qs.get('level') || '通用';
+  const tierKey = qs.get('tier') || 'bigtech';
+  const depth = qs.get('depth') || '';
+
+  if (!role) { location.href = 'index.html'; return; }
+
+  await D.loadCatalog();
+  await D.loadIndustry(industry);
+
+  const roleData = D.getRole(industry, role);
+  if (!roleData) {
+    // 岗位不存在（可能 URL 被改坏）
+    location.href = 'index.html';
+    return;
+  }
+
+  let tierName = '大厂';
+  try {
+    const t = (await D.loadCatalog()).tiers.tiers[tierKey];
+    if (t && t.name) tierName = t.name.split('（')[0];
+  } catch (e) { /* ignore */ }
+
+  const $pos = document.getElementById('rs-pos');
+  const $text = document.getElementById('rs-text');
+  const $file = document.getElementById('rs-file');
+  const $filemsg = document.getElementById('rs-filemsg');
+  const $count = document.getElementById('rs-count');
+  const $go = document.getElementById('rs-go');
+  const $skip = document.getElementById('rs-skip');
+  const $msg = document.getElementById('rs-msg');
+  const $result = document.getElementById('rs-result');
+  const $actions = document.getElementById('rs-actions');
+
+  $pos.innerHTML =
+    '<span class="rs-pill">行业 <b>' + esc(industry) + '</b></span>' +
+    '<span class="rs-pill">岗位 <b>' + esc(role) + '</b></span>' +
+    '<span class="rs-pill">层级 <b>' + esc(level) + '</b></span>' +
+    '<span class="rs-pill">档位 <b>' + esc(tierName) + '</b></span>';
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function track(name, props) {
+    try { if (window.Analytics) window.Analytics.track(name, props || {}); } catch (e) { /* ignore */ }
+  }
+
+  function setMsg(text, kind) {
+    $msg.textContent = text || '';
+    $msg.className = 'fb-msg' + (kind ? ' ' + kind : '');
+  }
+
+  function interviewUrl(extra) {
+    const p = new URLSearchParams({ industry, role, level, tier: tierKey });
+    if (depth && depth !== 'auto') p.set('depth', depth);
+    Object.keys(extra || {}).forEach(k => { if (extra[k]) p.set(k, extra[k]); });
+    return 'interview.html?' + p.toString();
+  }
+
+  function storeResume(text, match, forced) {
+    try {
+      sessionStorage.setItem('wb_resume', JSON.stringify({
+        text: text,
+        match: match,
+        industry: industry,
+        role: role,
+        level: level,
+        tier: tierKey,
+        lowMatch: !match.pass,
+        forced: !!forced,
+        at: Date.now()
+      }));
+    } catch (e) { /* 隐私模式可能写不进 sessionStorage，不影响继续 */ }
+  }
+
+  // ---- 字数统计 ----
+  function refreshCount() {
+    $count.textContent = ($text.value.trim().length) + ' 字';
+  }
+  $text.addEventListener('input', refreshCount);
+  refreshCount();
+
+  // ---- 跳过简历 ----
+  $skip.addEventListener('click', () => {
+    try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ }
+    track('resume_skip', { role: role, industry: industry });
+    location.href = interviewUrl();
+  });
+
+  // ---- 文件解析 ----
+  const SCRIPT_LOADED = {};
+  function loadScript(src) {
+    if (SCRIPT_LOADED[src]) return SCRIPT_LOADED[src];
+    SCRIPT_LOADED[src] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('解析库加载失败：' + src));
+      document.head.appendChild(s);
+    });
+    return SCRIPT_LOADED[src];
+  }
+
+  async function parsePdf(file) {
+    await loadScript('assets/js/vendor/pdf.min.js');
+    const lib = window.pdfjsLib;
+    if (!lib) throw new Error('PDF 解析库未就绪');
+    lib.GlobalWorkerOptions.workerSrc = 'assets/js/vendor/pdf.worker.min.js';
+    const buf = await file.arrayBuffer();
+    const pdf = await lib.getDocument({ data: new Uint8Array(buf) }).promise;
+    const parts = [];
+    const maxPages = Math.min(pdf.numPages, 30); // 简历一般不超过 30 页，防卡死
+    for (let i = 1; i <= maxPages; i++) {
+      const page = await pdf.getPage(i);
+      const tc = await page.getTextContent();
+      let line = '';
+      tc.items.forEach(it => {
+        line += it.str || '';
+        if (it.hasEOL) line += '\n';
+      });
+      parts.push(line);
+    }
+    return parts.join('\n').replace(/[ \t]+/g, ' ').trim();
+  }
+
+  async function parseDocx(file) {
+    await loadScript('assets/js/vendor/mammoth.browser.min.js');
+    if (!window.mammoth) throw new Error('Word 解析库未就绪');
+    const buf = await file.arrayBuffer();
+    const out = await window.mammoth.extractRawText({ arrayBuffer: buf });
+    return String((out && out.value) || '').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  async function parseTxt(file) {
+    return await file.text();
+  }
+
+  $file.addEventListener('change', async () => {
+    const f = $file.files && $file.files[0];
+    if (!f) return;
+    const name = f.name || '';
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    $filemsg.className = 'fb-msg';
+    $filemsg.textContent = '正在解析 ' + name + ' …';
+
+    try {
+      let text = '';
+      if (ext === 'pdf') text = await parsePdf(f);
+      else if (ext === 'docx') text = await parseDocx(f);
+      else if (ext === 'txt' || ext === 'md' || ext === 'markdown') text = await parseTxt(f);
+      else if (ext === 'doc') throw new Error('不支持老版 .doc，请在 Word 里另存为 .docx 或直接粘贴');
+      else throw new Error('不支持的文件类型：.' + ext);
+
+      text = String(text || '').trim();
+      if (!text || text.length < 20) {
+        throw new Error('没解析出文字（可能是扫描版 PDF 或纯图片）。请直接粘贴简历正文');
+      }
+
+      $text.value = text;
+      refreshCount();
+      $filemsg.className = 'fb-msg ok';
+      $filemsg.textContent = '已导入 ' + name + '（' + text.length + ' 字）';
+      track('resume_file_parse', { ext: ext, ok: true, chars: text.length });
+    } catch (e) {
+      $filemsg.className = 'fb-msg err';
+      $filemsg.textContent = e && e.message ? e.message : '解析失败，请直接粘贴';
+      track('resume_file_parse', { ext: ext, ok: false });
+    } finally {
+      $file.value = ''; // 允许重复选同一个文件
+    }
+  });
+
+  // ---- 匹配 ----
+  function renderResult(match, text) {
+    const passed = !!match.pass;
+    const low = !passed;
+    const scoreCls = passed ? 'rs-score' : 'rs-score low';
+
+    const listHTML = (title, arr, cls) => {
+      if (!arr || !arr.length) return '';
+      return '<div class="rs-list ' + (cls || '') + '"><h4>' + title + '</h4><ul>' +
+        arr.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
+    };
+
+    const probe = listHTML('面试会重点深挖（来自你的简历）', match.probe_points, 'probe');
+    const hits = listHTML('与你岗位相符的点', match.hits);
+    const gaps = listHTML('相对岗位要求的缺口', match.gaps);
+
+    let actionsHTML = '';
+    if (passed) {
+      actionsHTML =
+        '<div class="rs-result-actions">' +
+        '<button class="btn btn-primary btn-lg" id="rs-enter">进入面试 →</button>' +
+        '<a class="btn btn-ghost" href="index.html">换个岗位</a>' +
+        '</div>';
+    } else {
+      actionsHTML =
+        '<div class="rs-result-actions">' +
+        '<a class="btn btn-primary" href="index.html">换个岗位试试</a>' +
+        '<button class="btn btn-ghost" id="rs-retry">重新填写简历</button>' +
+        '</div>' +
+        '<button class="rs-force" id="rs-force">我了解风险，仍要继续这场面试 →</button>';
+    }
+
+    $result.innerHTML =
+      '<div class="card-title"><span class="ic"></span>简历与岗位匹配分析</div>' +
+      '<div class="rs-score-wrap">' +
+      '<div class="' + scoreCls + '">' + match.score + '<small>/ 100</small></div>' +
+      '<div class="rs-verdict">' + esc(match.verdict) +
+      '<br><span class="rs-tag ' + (passed ? 'ok' : 'warn') + '">' +
+      (match.lenient
+        ? '基础匹配（未接 AI）· 已放行，严格判定请开启 AI'
+        : (passed ? '匹配 · 可以开始针对性面试' : '匹配度不足 · 建议先调整岗位或补充经历')) +
+      '</span></div>' +
+      '</div>' +
+      (match.fallbackReason ? '<div class="rs-fallback">' + esc(match.fallbackReason) + '</div>' : '') +
+      (hits || gaps ? '<div class="rs-lists">' + hits + gaps + '</div>' : '') +
+      probe +
+      actionsHTML;
+
+    $result.classList.add('show');
+    if ($actions) $actions.style.display = 'none';
+    setMsg('');
+
+    if (passed) {
+      const $enter = document.getElementById('rs-enter');
+      $enter.addEventListener('click', () => {
+        storeResume(text, match, false);
+        track('resume_match', { engine: match.engine, score: match.score, pass: true });
+        location.href = interviewUrl({ resume: '1' });
+      });
+    } else {
+      const $retry = document.getElementById('rs-retry');
+      if ($retry) $retry.addEventListener('click', () => {
+        $result.classList.remove('show');
+        if ($actions) $actions.style.display = '';
+        $text.focus();
+        $text.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+      const $force = document.getElementById('rs-force');
+      if ($force) $force.addEventListener('click', () => {
+        storeResume(text, match, true);
+        track('resume_match', { engine: match.engine, score: match.score, pass: false, forced: true });
+        location.href = interviewUrl({ resume: '1', lowmatch: '1' });
+      });
+    }
+    $result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  $go.addEventListener('click', async () => {
+    const text = $text.value.trim();
+    if (text.length < (window.ResumeMatcher ? ResumeMatcher.MIN_RESUME : 30)) {
+      setMsg('简历还太短，至少写 30 字：教育背景、工作经历或项目经历都行。', 'err');
+      $text.focus();
+      return;
+    }
+
+    $go.disabled = true;
+    const oldLabel = $go.textContent;
+    $go.textContent = 'AI 正在比对简历与岗位…';
+    setMsg('正在分析，通常需要几秒。若云端较慢，会自动降级为基础匹配。');
+
+    let match;
+    try {
+      match = await ResumeMatcher.check(text, {
+        industry: industry, role: role, level: level, roleData: roleData
+      });
+    } catch (e) {
+      match = {
+        score: 0, pass: false, hits: [], gaps: [], probe_points: [],
+        verdict: '匹配分析失败：' + (e && e.message ? e.message : '未知错误') + '。你可以重试，或先跳过简历直接面试。',
+        engine: 'error'
+      };
+    }
+
+    $go.disabled = false;
+    $go.textContent = oldLabel;
+
+    if (match.invalid) {
+      setMsg(match.verdict, 'err');
+      return;
+    }
+    renderResult(match, text);
+  });
+})();

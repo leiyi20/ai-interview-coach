@@ -108,7 +108,7 @@
     $start.disabled = !ready;
     if (ready) {
       const tname = tierData[selectedTier].name.split('（')[0];
-      $hint.textContent = `即将进入「${$role.value} · ${$lvl.value} · ${tname}」的对话式模拟面试`;
+      $hint.textContent = `即将进入「${$role.value} · ${$lvl.value} · ${tname}」：下一步提交简历，AI 会先判断匹配度，再按你的经历出题`;
     } else {
       $hint.textContent = selectedTier ? '' : '请选择一个公司档位';
     }
@@ -127,7 +127,8 @@
     const $depth = document.getElementById('sel-depth');
     const dv = $depth ? $depth.value : 'auto';
     if (dv && dv !== 'auto') params.set('depth', dv);
-    location.href = 'interview.html?' + params.toString();
+    // 先到简历页：AI 判定简历与岗位匹配度，通过后再进入面试
+    location.href = 'resume.html?' + params.toString();
   });
 
   fillRoles();

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 面试教练 · 提交简历</title>
+  <meta name="description" content="提交简历，先由 AI 判断与目标岗位的匹配度，再据此定制面试问题。">
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a6df0'/%3E%3C/svg%3E">
+  <style>
+    .rs-pos{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;}
+    .rs-pill{background:var(--wb-card);border:1px solid var(--wb-border);border-radius:999px;padding:6px 14px;font-size:12.5px;color:var(--wb-muted);}
+    .rs-pill b{color:var(--wb-text);font-weight:600;}
+    .rs-text{width:100%;min-height:260px;resize:vertical;border:1px solid var(--wb-border);border-radius:10px;padding:12px 14px;font-family:var(--font);font-size:13.5px;line-height:1.75;color:var(--wb-text);background:#fcfdff;outline:none;}
+    .rs-text:focus{border-color:var(--wb-blue);box-shadow:0 0 0 3px rgba(58,109,240,.10);}
+    .rs-filebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
+    .rs-count{margin-left:auto;font-size:12px;color:var(--wb-muted);font-variant-numeric:tabular-nums;}
+    .rs-hint{font-size:12px;color:var(--wb-muted);margin:8px 0 0;}
+    .rs-privacy{margin-top:12px;padding:10px 12px;background:var(--wb-blue-soft);border:1px solid #d6e4ff;border-radius:10px;font-size:12px;color:#3b567f;line-height:1.7;}
+    .rs-actions{margin-top:18px;text-align:center;}
+    .rs-skip{display:inline-block;margin-top:12px;font-size:12.5px;color:var(--wb-muted);text-decoration:underline;text-underline-offset:3px;}
+    .rs-skip:hover{color:var(--wb-text);}
+    .rs-result{margin-top:16px;display:none;}
+    .rs-result.show{display:block;}
+    .rs-score-wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+    .rs-score{font-size:40px;font-weight:700;line-height:1;color:var(--wb-blue);font-variant-numeric:tabular-nums;}
+    .rs-score.low{color:var(--wb-red);}
+    .rs-score small{font-size:13px;font-weight:400;color:var(--wb-muted);margin-left:4px;}
+    .rs-verdict{flex:1;min-width:200px;font-size:13px;color:var(--wb-text);line-height:1.7;}
+    .rs-tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;margin-top:6px;}
+    .rs-tag.ok{background:var(--wb-teal-l);color:#0f7a5c;}
+    .rs-tag.warn{background:#fff4e5;color:#a86a00;}
+    .rs-lists{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;}
+    .rs-list h4{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--wb-text);}
+    .rs-list ul{margin:0;padding-left:18px;font-size:12.5px;color:var(--wb-muted);line-height:1.85;}
+    .rs-list.probe{grid-column:1 / -1;}
+    .rs-list.probe ul{color:var(--wb-text);}
+    .rs-fallback{margin-top:12px;font-size:12px;color:#a86a00;background:#fff8ec;border:1px solid #f7e0b8;border-radius:8px;padding:8px 10px;line-height:1.7;}
+    .rs-result-actions{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;}
+    .rs-force{display:block;width:100%;margin-top:14px;background:none;border:none;cursor:pointer;font-family:var(--font);font-size:12px;color:#9aa0a6;text-decoration:underline;text-underline-offset:3px;padding:4px;}
+    .rs-force:hover{color:var(--wb-text);}
+    @media(max-width:640px){.rs-lists{grid-template-columns:1fr;}.rs-score{font-size:34px;}}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1 class="page-title">提交简历，让面试更有针对性</h1>
+    <p class="page-sub">AI 会先比对简历与目标岗位：匹配，就按你的经历出题深挖；不匹配，先指出差距，免得白练一场。</p>
+
+    <div class="onboard-steps">
+      <div class="os-step"><span class="os-n">1</span><div><b>选岗位</b><em>已完成</em></div></div>
+      <div class="os-arrow">→</div>
+      <div class="os-step"><span class="os-n">2</span><div><b>选档位</b><em>已完成</em></div></div>
+      <div class="os-arrow">→</div>
+      <div class="os-step"><span class="os-n">3</span><div><b>简历匹配</b><em>当前步骤</em></div></div>
+      <div class="os-arrow">→</div>
+      <div class="os-step"><span class="os-n">4</span><div><b>对话面试</b><em>按简历出题</em></div></div>
+    </div>
+
+    <div class="rs-pos" id="rs-pos"></div>
+
+    <div class="card" id="rs-form-card">
+      <div class="card-title"><span class="ic"></span>你的简历</div>
+      <textarea class="rs-text" id="rs-text" placeholder="把简历正文粘贴到这里：教育背景、工作经历、项目经历、技能栈。&#10;&#10;写得越具体（做了什么、用了什么技术、拿到什么结果），AI 越能判断匹配度、也越能问出针对性强的问题。"></textarea>
+      <div class="rs-filebar">
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">
+          上传 PDF / Word / TXT
+          <input type="file" id="rs-file" accept=".pdf,.docx,.txt,.md,.markdown" hidden>
+        </label>
+        <span class="fb-msg" id="rs-filemsg" style="margin:0;">也可以直接粘贴正文</span>
+        <span class="rs-count" id="rs-count">0 字</span>
+      </div>
+      <p class="rs-hint">扫描版 PDF、老版 .doc 可能解析不出文字；遇到这种情况，请直接粘贴。</p>
+      <div class="rs-privacy">隐私说明：简历内容仅用于本次匹配与出题，会发送至云端 AI 分析，<b>不存储、不上传题库、不会出现在任何公开页面</b>；离开页面或关闭标签页即清除。</div>
+    </div>
+
+    <div class="rs-actions" id="rs-actions">
+      <button class="btn btn-primary btn-lg" id="rs-go">AI 匹配并开始面试 →</button>
+      <br>
+      <a class="rs-skip" id="rs-skip" href="javascript:void 0">跳过简历，直接进入通用面试 →</a>
+    </div>
+    <p class="fb-msg" id="rs-msg"></p>
+
+    <div class="card rs-result" id="rs-result"></div>
+  </main>
+
+  <script src="assets/js/vendor/workbuddy-cloud-sdk.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/cloud.js"></script>
+  <script src="assets/js/analytics.js"></script>
+  <script src="assets/js/llm.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/nav.js"></script>
+  <script src="assets/js/resume-matcher.js"></script>
+  <script src="assets/js/resume.js"></script>
+</body>
+</html>
