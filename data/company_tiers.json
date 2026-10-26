@@ -1,0 +1,218 @@
+{
+  "meta": {
+    "name": "公司规模/性质分档面试差异模型",
+    "version": "1.0",
+    "description": "将面试雇主按规模与性质分为四档（大厂 / 小厂 / 外企 / 体制内），与 industry / role / level / difficulty 正交叠加。本文件定义每档的招聘逻辑、流程模型、能力权重、题库侧重、评分标准、话术要点与准备策略，是建站时可独立读取的『筛选 + 权重覆盖层』。",
+    "tiers": ["bigtech", "startup", "foreign", "civserv"],
+    "orthogonal_with": ["industry", "role", "level", "difficulty"],
+    "competency_ref": "competency_dictionary.json（8 个通用能力 key：professional/logic/communication/learning/teamwork/resilience/responsibility/leadership）",
+    "stability_note": "本文件的 competency_weights 额外使用 stability 维度（体制内核心），它对应 scoring_template.json 的『稳定性与价值观』维度，是 tier 层对 competency_dictionary 的扩展引用，不污染底层 8 能力词典。",
+    "scope_rule": "本文件为轻量叠加层，不修改 questions.json 的 1852 道题本体；建站时先按 industry/role/level 选岗，再按 tier 决定权重预设、流程模板与题库抽取偏好。",
+    "note": "权重初始值为经验占位，上线后需用真实评分分布校准。"
+  },
+  "tiers": {
+    "bigtech": {
+      "key": "bigtech",
+      "name": "大厂（头部互联网 / 科技 / 一线名企）",
+      "examples": [
+        "字节 / 阿里 / 腾讯 / 美团 / 拼多多 / 华为 / 百度",
+        "一线独角兽与估值靠前的成长期公司",
+        "头部外企的研发 / 数据 / 产品中心（若偏重标准化也可归入 foreign）"
+      ],
+      "hiring_logic": "买潜力与上限：招错人成本高但组织体系能兜底，靠标准化流程与群体常模优中选优。",
+      "core_question": "你有多强、能长多高？",
+      "decision_model": "对比排序（Stanine 常模），多轮交叉面试，任一环节可一票否决。",
+      "process_model": {
+        "rounds": ["网申 / 内推", "笔试（算法 / 行测）", "技术面 ×2-4（含交叉面 / 加面）", "主管面", "HR 面 / 谈薪"],
+        "single_round_minutes": 45,
+        "total_duration": "2-4 周",
+        "decision_chain": "多面试官独立打分 → 交叉合议 → hiring manager 终审",
+        "owner_weight": "面试官集体权重高；HR / 老板权重受流程约束，难以单边拍板"
+      },
+      "competency_weights": {
+        "professional": 0.25,
+        "logic": 0.20,
+        "communication": 0.10,
+        "learning": 0.20,
+        "teamwork": 0.05,
+        "resilience": 0.05,
+        "responsibility": 0.10,
+        "leadership": 0.05,
+        "stability": 0.00
+      },
+      "question_bias": {
+        "preferred_types": ["专业知识", "场景题", "项目经历"],
+        "difficulty_skew": "困难偏多，追问链（followups）深，常追问到第三层原理",
+        "emphasis": "算法与数据结构、计算机底层原理（OS / 网络 / 数据库实现层）、系统设计、项目深度，八股与原理并重"
+      },
+      "scoring_note": "用 scoring_template.json 的常模排序逻辑；中间区间（2.5~4.0）强制人工复核；看重相对分位而非绝对合格线。",
+      "script_tips": "沿用 process_and_scripts.md 完整版；开场即进入专业深挖，少寒暄；反问环节候选人常问培养体系 / 技术氛围。",
+      "prep_advice": [
+        "算法刷到肌肉记忆（LeetCode 高频 + 适当 Hard）",
+        "项目挖到每个设计取舍都能讲清『为什么这么做』",
+        "复习底层原理到实现层（不只会背定义）",
+        "练系统设计与容量估算（QPS / 数据量 / 一致性）"
+      ]
+    },
+    "startup": {
+      "key": "startup",
+      "name": "小厂（初创 / 中小型民企 / 传统行业信息化部门）",
+      "examples": [
+        "A / B 轮及以前的早期创业公司",
+        "百人以下中小型民企、外包与项目制公司",
+        "传统行业内部的信息化 / 数字化部门"
+      ],
+      "hiring_logic": "买即战力与性价比：招错人成本极高（一人顶一坑），要能立刻上手、一专多能。",
+      "core_question": "你现在就能用吗、跟我合不合？",
+      "decision_model": "匹配优先，老板 / 直属 leader 主观权重极大；无常模压力，眼缘与即时匹配度被放大。",
+      "process_model": {
+        "rounds": ["技术面 ×1-2（常为未来直属 leader）", "老板面 / HR 面合并", "直接谈薪"],
+        "single_round_minutes": 30,
+        "total_duration": "数天到两周",
+        "decision_chain": "直属 leader 初判 → 老板 / 合伙人终审（常一轮定）",
+        "owner_weight": "老板与直属 leader 主观权重极高，流程短、决策快"
+      },
+      "competency_weights": {
+        "professional": 0.35,
+        "logic": 0.10,
+        "communication": 0.15,
+        "learning": 0.10,
+        "teamwork": 0.05,
+        "resilience": 0.05,
+        "responsibility": 0.15,
+        "leadership": 0.03,
+        "stability": 0.02
+      },
+      "question_bias": {
+        "preferred_types": ["专业知识", "场景题", "项目经历"],
+        "difficulty_skew": "中等为主，少 Hard；更偏框架 / 工具熟练度与业务落地",
+        "emphasis": "框架与工具熟练度、业务闭环经验、线上排障、一专多能与 DevOps 意识；少考纯理论"
+      },
+      "scoring_note": "无常模，按绝对匹配度与『来了就能交付』判断；评分更主观，常落在 scoring_template.json 的 pending / hire 区间靠人拍板。",
+      "script_tips": "流程可轻量化：少寒暄、直奔业务落地；开场即问『做过类似场景没有』；反问环节候选人常问业务现状 / 老板预期 / 股权。",
+      "prep_advice": [
+        "突出『我来了就能交付』，准备 1-2 个完整业务闭环案例",
+        "展示工具链熟练度（能直接写业务代码 / 配环境）",
+        "提前研究对方产品与业务，证明你做过类似场景",
+        "谈薪时关注现金与即时价值，股权按期权看待"
+      ]
+    },
+    "foreign": {
+      "key": "foreign",
+      "name": "外企（外资 / 合资 / 有成熟管理体系的跨国公司）",
+      "examples": [
+        "外资科技 / 制药 / 快消 / 咨询 / 金融研发中心",
+        "合资企业与有成熟管培体系的跨国公司",
+        "强调流程、合规与跨文化协作的海外背景公司"
+      ],
+      "hiring_logic": "买规范、协作与长期稳定：看重流程意识、跨文化沟通、职业化与合规底线。",
+      "core_question": "你专业且职业吗、能融入体系协作吗？",
+      "decision_model": "结构化评估 + 行为面试（BEI）为主，重文化匹配与软技能；HC 与职级体系清晰。",
+      "process_model": {
+        "rounds": ["简历筛选（英语 / 国际化背景加分）", "HR 电话面", "专业面 ×1-2", "跨文化 / 行为面（含外籍或海外汇报线）", "终面 / 谈薪"],
+        "single_round_minutes": 45,
+        "total_duration": "2-4 周",
+        "decision_chain": "HR +  hiring manager + 跨文化 panel 合议，强调一致性与合规",
+        "owner_weight": "HR 与 hiring manager 协同权重高，外方汇报线有话语权"
+      },
+      "competency_weights": {
+        "professional": 0.15,
+        "logic": 0.10,
+        "communication": 0.20,
+        "learning": 0.05,
+        "teamwork": 0.20,
+        "resilience": 0.05,
+        "responsibility": 0.15,
+        "leadership": 0.10,
+        "stability": 0.00
+      },
+      "question_bias": {
+        "preferred_types": ["行为面试", "专业知识", "反问", "场景题"],
+        "difficulty_skew": "中等为主，重行为事件（STAR）与英语表达",
+        "emphasis": "沟通表达、跨部门协作、领导力与影响力、责任心；英语口语与邮件写作常作为隐性门槛"
+      },
+      "scoring_note": "用 scoring_template.json 的维度但重 communication / teamwork / leadership；行为面（STAR）权重高，常配英语口语评估。",
+      "script_tips": "流程强调职业化与双向尊重；自我介绍后可中英切换；反问环节候选人常问职业发展路径 / 外派 / 工作生活平衡。",
+      "prep_advice": [
+        "用 STAR 打磨 3-5 个行为故事，覆盖冲突 / 协作 / 失败复盘",
+        "练英语口语与邮件写作（常有英文面或英文 case）",
+        "展现流程意识与合规底线，避免『野路子』表达",
+        "准备跨文化协作案例，证明你能融入矩阵式组织"
+      ]
+    },
+    "civserv": {
+      "key": "civserv",
+      "name": "体制内（公务员 / 事业单位 / 国企央企 / 军队文职）",
+      "examples": [
+        "国家公务员与地方公务员招考",
+        "事业单位（学校 / 医院 / 科研院所）与教师编 / 特岗",
+        "国企央企与军队文职"
+      ],
+      "hiring_logic": "买稳定、合规与政治素养：标准化考试 + 结构化 / 半结构化面试，重价值观与岗位匹配。",
+      "core_question": "你稳不稳、合规吗、认同吗？",
+      "decision_model": "标准化评分（结构化面试固定维度）+ 笔试硬门槛；分差小，守底线比出彩更重要。",
+      "process_model": {
+        "rounds": ["笔试（行测 + 申论 / 专业科目，硬门槛）", "资格复审", "结构化 / 半结构化面试", "体检 / 政审", "公示录用"],
+        "single_round_minutes": 15,
+        "total_duration": "数月（含备考周期）",
+        "decision_chain": "考官组按 rubric 独立打分去极值平均；组织部门终审，重合规与政审",
+        "owner_weight": "考官组集体评分，个人难以干预；政审与组织结论一票否决"
+      },
+      "competency_weights": {
+        "professional": 0.25,
+        "logic": 0.10,
+        "communication": 0.10,
+        "learning": 0.02,
+        "teamwork": 0.05,
+        "resilience": 0.03,
+        "responsibility": 0.20,
+        "leadership": 0.00,
+        "stability": 0.25
+      },
+      "question_bias": {
+        "preferred_types": ["综合分析", "专业知识", "行为面试", "自我介绍"],
+        "difficulty_skew": "中等偏上，重综合分析（社会现象 / 政策理解）与岗位专业题",
+        "emphasis": "综合分析能力、岗位专业知识、政治素养与价值观、表达沉稳；几乎不考算法与纯技术深挖"
+      },
+      "scoring_note": "按固定 rubric（综合分析 / 组织协调 / 应急应变 / 人际 / 岗位匹配等）去极值平均；守合规底线，触碰红线直接低分。",
+      "script_tips": "面试高度结构化：自我介绍限时、综合分析有套路（表态-分析-对策）；语气沉稳、立场端正；几乎无反问主动权。",
+      "prep_advice": [
+        "练综合分析『表态-分析-对策』框架，关注时政与政策口径",
+        "吃透岗位专业题（教师编试讲、医疗 / 法律专业题等）",
+        "提升表达沉稳度与仪态，分差小拼稳定性",
+        "守住合规与政治素养底线，任何红线题都先合规后展开"
+      ]
+    }
+  },
+  "tier_vs_rubric_mapping": {
+    "bigtech": "叠加 scoring_template.json 的 weight_presets.技术专业类，并强化 learning / logic；岗位自定义 rubric 不变。",
+    "startup": "叠加 scoring_template.json 的 weight_presets.技术专业类 / 销售类，并强化 professional / responsibility；流程改用轻量版。",
+    "foreign": "叠加 scoring_template.json 默认预设，并强化 communication / teamwork / leadership；行为面（STAR）权重提升。",
+    "civserv": "覆盖为体制内结构化 rubric（综合分析 / 组织协调 / 应急应变 / 人际 / 岗位匹配 / 政治素养），与 scoring_template 的通用职能维度不同源但可映射。"
+  },
+  "tier_detection": {
+    "description": "建站时可由用户选择公司档位，或用以下规则做轻量自动判定（命中即归档，可多选后让用户确认）。",
+    "rules": [
+      {"tier": "bigtech", "signals": ["员工规模 > 1 万", "知名头部品牌", "校招流程含标准化笔试 + 多轮交叉面", "技术岗考算法 / 系统设计"]},
+      {"tier": "startup", "signals": ["融资轮次 A/B/C 轮或民企 < 200 人", "老板 / 合伙人直接面试", "岗位描述强调『全栈 / 一专多能 / 立刻上手』", "无独立 HR 体系"]},
+      {"tier": "foreign", "signals": ["公司名含外资 / 跨国背景", "英文 job description", "有成熟管培 / 职级体系", "面试含英文或跨文化 panel"]},
+      {"tier": "civserv", "signals": ["招考公告 / 编制 / 国企央企", "需参加行测申论或专业笔试", "结构化面试 + 政审", "岗位稳定性与合规要求高"]}
+    ]
+  },
+  "cross_comparison": {
+    "dimensions": ["招聘逻辑", "决策模型", "流程轮次", "核心考察", "评分方式", "题库侧重", "准备重心"],
+    "rows": {
+      "bigtech": ["买潜力 / 上限", "常模对比排序、一票否决", "笔试 + 2-4 轮技术 + 主管 + HR", "底层原理 / 算法 / 系统设计", "相对分位（Stanine）", "困难题 + 深追问", "刷算法、挖项目深度"],
+      "startup": ["买即战力 / 性价比", "匹配优先、老板拍板", "1-2 轮 + 老板面", "业务落地 / 工具熟练", "绝对匹配度、主观", "中等题、业务闭环", "证明立刻交付"],
+      "foreign": ["买规范 / 协作", "结构化 + 行为面、文化匹配", "HR 电面 + 专业 + 跨文化", "沟通 / 协作 / 领导力", "维度评分、重软技能", "行为面 + 英语", "STAR + 英语 + 职业化"],
+      "civserv": ["买稳定 / 合规", "固定 rubric 去极值平均", "笔试硬门槛 + 结构化面 + 政审", "综合分析 / 政治素养", "守底线、分差小", "综合分析 + 专业题", "时政框架 + 仪态稳定"]
+    }
+  },
+  "integration": {
+    "with_questions": "industry/role/level 选岗 → tier 决定权重预设与题库抽取偏好；题型枚举沿用 questions.json 的 9 类，civserv 档额外激活『综合分析 / 试讲』。",
+    "with_scoring_template": "tier 通过 tier_vs_rubric_mapping 映射到 scoring_template 的 weight_presets 或体制内专用 rubric；stability 维度对应其『稳定性与价值观』。",
+    "with_process_and_scripts": "process_and_scripts.md 第五节给出四档流程 / 话术 / 评分差异，bigtech 用完整版、startup 用轻量版、foreign 加英文与行为面、civserv 用结构化模板。",
+    "with_modules": "modules.json 的 LGD 群面多见于 bigtech / foreign 校招；笔试测评四档通用但题型侧重不同（bigtech 重算法、civserv 重行测申论）；通用 Case 偏 bigtech / foreign。",
+    "with_competency_dictionary": "competency_weights 直接引用 competency_dictionary 的 8 个能力 key（stability 为 tier 层扩展），权重和均为 1.0，建站时按 tier 覆盖岗位默认权重。"
+  }
+}

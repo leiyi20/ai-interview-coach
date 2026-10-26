@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 面试教练 · 开始模拟</title>
+    <meta name="description" content="AI 面试教练——免费在线模拟面试平台。覆盖互联网、金融、体制内等 6 大行业 113 个岗位，AI 面试官与你实时对话、追问并生成评分报告，帮你针对性备战真实面试。">
+  <meta name="keywords" content="AI面试,模拟面试,AI面试官,面试准备,面试题,面试辅导,求职,结构化面试">
+  <meta name="author" content="AI 面试教练">
+  <meta property="og:title" content="AI 面试教练 · 开始模拟">
+  <meta property="og:description" content="AI 面试教练——免费在线模拟面试平台。覆盖互联网、金融、体制内等 6 大行业 113 个岗位，AI 面试官与你实时对话、追问并生成评分报告，帮你针对性备战真实面试。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-interview-58714.app.workbuddy.host/">
+  <meta property="og:site_name" content="AI 面试教练">
+  <meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a6df0'/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="container">
+    <h1 class="page-title">开始一场模拟面试</h1>
+    <p class="page-sub">选择你的目标岗位与公司档位，AI 面试官将与你实时对话、追问并给出评分报告。覆盖互联网、金融、实体、通用职能、体制内、创意 6 大行业，全部可选。</p>
+
+    <div class="onboard-steps">
+      <div class="os-step"><span class="os-n">1</span><div><b>选岗位</b><em>行业 → 岗位 → 层级</em></div></div>
+      <div class="os-arrow">→</div>
+      <div class="os-step"><span class="os-n">2</span><div><b>选档位</b><em>大厂 / 小厂 / 外企 / 体制内</em></div></div>
+      <div class="os-arrow">→</div>
+      <div class="os-step"><span class="os-n">3</span><div><b>对话面试</b><em>出题追问 + 评分报告</em></div></div>
+    </div>
+
+    <section class="seo-intro" style="margin:28px 0;line-height:1.85;color:#445;">
+      <h2 style="font-size:18px;margin:0 0 12px;color:#1f2d3d;">AI 面试教练能帮你做什么</h2>
+      <ul style="padding-left:20px;margin:0;">
+        <li><b>真实还原面试节奏</b>：AI 面试官按你选的岗位实时出题，并在你的回答后追问，不像背题那样假。</li>
+        <li><b>逐题评分报告</b>：每道题给出得分、关键词命中与具体改进建议，清楚知道弱在哪、怎么补。</li>
+        <li><b>覆盖 6 大行业 113 个岗位</b>：互联网、金融、实体、通用职能、体制内、创意，从校招到社招都能练。</li>
+        <li><b>分档策略</b>：大厂、创业公司、外企、体制内四类面试的问法与评分侧重不同，分别给出应对思路。</li>
+        <li><b>免费、隐私本地</b>：无需注册即可开练，作答内容不上云，仅保留匿名使用统计。</li>
+      </ul>
+    </section>
+
+    <div class="onboard-tip" id="onboard-tip">
+      <button class="ot-close" id="ot-close" aria-label="关闭提示">×</button>
+      <div class="ot-title">第一次来？30 秒了解怎么用</div>
+      <ul class="ot-list">
+        <li><b>不用注册也能试</b>：面完直接看报告；登录后报告会保存到云端，换设备也能看。</li>
+        <li><b>全程打字作答</b>：像真实面试一样，AI 面试官会顺着你的回答继续追问。</li>
+        <li><b>每题独立限时</b>：简单题 3 分钟、中等 5 分钟、困难 7 分钟；到点自动结束本题并进入下一题，已回答的内容照样计入评分。</li>
+      </ul>
+    </div>
+
+    <div class="cov-banner" id="cov-banner">
+      <div class="cov-item"><div class="cov-num" id="cov-ind">—</div><div class="cov-lab">行业领域</div></div>
+      <div class="cov-item"><div class="cov-num" id="cov-role">—</div><div class="cov-lab">细分岗位</div></div>
+      <div class="cov-item"><div class="cov-num" id="cov-q">—</div><div class="cov-lab">真题题库</div></div>
+      <div class="cov-item"><div class="cov-num">4</div><div class="cov-lab">公司档位</div></div>
+    </div>
+
+    <div class="industry-grid" id="industry-grid"></div>
+
+    <div class="card">
+      <div class="card-title"><span class="ic"></span>第一步 · 选择行业与岗位</div>
+      <div class="grid-2">
+        <div class="field">
+          <div class="field-label">行业</div>
+          <select id="sel-industry"></select>
+        </div>
+        <div class="field">
+          <div class="field-label">岗位</div>
+          <select id="sel-role"></select>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">层级</div>
+        <select id="sel-level"></select>
+      </div>
+      <div class="field">
+        <div class="field-label">追问深度</div>
+        <select id="sel-depth">
+          <option value="auto">按档位（大厂 2 轮，其余 1 轮）</option>
+          <option value="1">浅 · 每题 1 轮追问</option>
+          <option value="2">标准 · 每题 2 轮</option>
+          <option value="3">深挖 · 每题 3 轮</option>
+          <option value="0">不追问 · 只答主问题</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ic"></span>第二步 · 选择公司档位</div>
+      <p class="page-sub" style="margin-bottom:14px;">不同档位的面试逻辑、流程与考察侧重完全不同（大厂考潜力、小厂考即战力、外企考规范、体制内考稳定）。</p>
+      <div class="tier-grid" id="tier-grid"></div>
+    </div>
+
+    <div style="margin-top:20px;text-align:center;">
+      <button class="btn btn-primary btn-lg" id="btn-start" disabled>开始模拟面试 →</button>
+      <p class="page-sub" style="margin-top:10px;font-size:12px;">预计 10–15 分钟 · 打字作答 · 可随时提前结束</p>
+      <p class="page-sub" id="hint" style="margin-top:6px;"></p>
+    </div>
+  </main>
+
+  <script src="assets/js/vendor/workbuddy-cloud-sdk.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/cloud.js"></script>
+  <script src="assets/js/analytics.js"></script>
+  <script src="assets/js/llm.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/nav.js"></script>
+  <script src="assets/js/index.js"></script>
+</body>
+</html>

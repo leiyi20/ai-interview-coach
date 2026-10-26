@@ -1,0 +1,9 @@
+# 操作系统垃圾
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# 本地覆盖配置（不入库）
+*.local
+.env
+.env.local

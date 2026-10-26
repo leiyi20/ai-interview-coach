@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ai-interview-58714.app.workbuddy.host/sitemap.xml

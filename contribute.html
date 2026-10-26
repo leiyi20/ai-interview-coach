@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a6df0'/%3E%3C/svg%3E">
+  <title>参与共建 · AI 面试教练</title>
+    <meta name="description" content="AI 面试教练参与共建——提交题目纠错与新题，共同打磨中文面试题库。">
+  <meta name="keywords" content="面试共建,题库贡献,面试纠错,众包题库">
+  <meta name="author" content="AI 面试教练">
+  <meta property="og:title" content="参与共建 · AI 面试教练">
+  <meta property="og:description" content="AI 面试教练参与共建——提交题目纠错与新题，共同打磨中文面试题库。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-interview-58714.app.workbuddy.host/">
+  <meta property="og:site_name" content="AI 面试教练">
+  <meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="page-title">参与共建</h1>
+    <p class="page-sub">你面过的地方、踩过的坑，是这个题库最缺的东西。选一类填入，采纳后会公开在下方案例区，并写进产品。</p>
+
+    <div class="card">
+      <div class="card-title"><span class="ic"></span>第一步 · 选择你要分享的类型</div>
+      <div class="ct-types" id="ct-types"></div>
+      <div class="ct-why" id="ct-why"></div>
+    </div>
+
+    <div class="card" id="ct-form-card" style="display:none;">
+      <div class="card-title"><span class="ic"></span>第二步 · 填写内容</div>
+
+      <div class="ct-ctx">
+        <div class="field">
+          <div class="field-label">行业（选填）</div>
+          <select id="ct-industry"></select>
+        </div>
+        <div class="field">
+          <div class="field-label">岗位（选填）</div>
+          <select id="ct-role"></select>
+        </div>
+        <div class="field" id="ct-tier-field" style="display:none;">
+          <div class="field-label">公司档位</div>
+          <select id="ct-tier"></select>
+        </div>
+      </div>
+
+      <!-- 经验案例 -->
+      <div class="ct-group" data-kind="experience" style="display:none;">
+        <div class="field">
+          <div class="field-label">真实被问到的问题 <span class="fb-req">必填</span></div>
+          <textarea id="ex-asked" rows="2" maxlength="200" placeholder="例：介绍一下你做过的项目里最难的一个，你是怎么解决的"></textarea>
+        </div>
+        <div class="field">
+          <div class="field-label">你当时怎么答的 <span class="fb-req">必填</span></div>
+          <textarea id="ex-answer" rows="4" maxlength="1200" placeholder="尽量还原当时真实的说法，不用修饰"></textarea>
+        </div>
+        <div class="field">
+          <div class="field-label">事后觉得该怎么答（选填）</div>
+          <textarea id="ex-better" rows="3" maxlength="1200" placeholder="现在回头看，哪一点该说清楚、哪一点不该讲"></textarea>
+        </div>
+        <div class="field">
+          <div class="field-label">结果（选填）</div>
+          <select id="ex-result">
+            <option value="">不透露</option>
+            <option value="pass">通过</option>
+            <option value="fail">未通过</option>
+            <option value="unknown">不知道</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 档位/行业实况 -->
+      <div class="ct-group" data-kind="tier" style="display:none;">
+        <div class="field">
+          <div class="field-label">他们最看重哪些维度（可多选）<span class="fb-req">必填</span></div>
+          <div class="ct-dims" id="tr-dims"></div>
+        </div>
+        <div class="field">
+          <div class="field-label">具体例子 <span class="fb-req">必填</span></div>
+          <textarea id="tr-example" rows="3" maxlength="600" placeholder="例：两轮技术面都在追问边界条件和异常处理，几乎没有问业务理解"></textarea>
+        </div>
+        <div class="field">
+          <div class="field-label">你判断的依据 <span class="fb-req">必填</span></div>
+          <input id="tr-basis" maxlength="120" placeholder="例：面过 3 家同档位，拿到 1 个 offer">
+        </div>
+      </div>
+
+      <!-- 踩坑复盘 -->
+      <div class="ct-group" data-kind="pitfall" style="display:none;">
+        <div class="field">
+          <div class="field-label">栽在哪类题 / 哪个考点 <span class="fb-req">必填</span></div>
+          <input id="pf-topic" maxlength="120" placeholder="例：系统设计里的一致性 / 行为面试里的冲突处理">
+        </div>
+        <div class="field">
+          <div class="field-label">当时卡在哪 <span class="fb-req">必填</span></div>
+          <textarea id="pf-stuck" rows="3" maxlength="600" placeholder="例：只会背概念，一被追问「为什么这么做」就露馅"></textarea>
+        </div>
+        <div class="field">
+          <div class="field-label">后来怎么补的 <span class="fb-req">必填</span></div>
+          <textarea id="pf-fixed" rows="3" maxlength="600" placeholder="例：把每个方案的反例都写一遍，再找人追问我"></textarea>
+        </div>
+        <div class="field">
+          <div class="field-label">给后来者的建议（选填）</div>
+          <textarea id="pf-advice" rows="2" maxlength="300"></textarea>
+        </div>
+      </div>
+
+      <!-- 主观看法 -->
+      <div class="ct-group" data-kind="opinion" style="display:none;">
+        <div class="field">
+          <div class="field-label">关于什么 <span class="fb-req">必填</span></div>
+          <select id="op-target">
+            <option value="">请选择…</option>
+            <option value="content">题目内容 / 覆盖面</option>
+            <option value="copy">说明文案 / 新手引导</option>
+            <option value="flow">流程 / 交互体验</option>
+            <option value="feature">功能建议</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">你的看法 <span class="fb-req">必填</span></div>
+          <textarea id="op-view" rows="3" maxlength="500"></textarea>
+        </div>
+        <div class="field">
+          <div class="field-label">理由 / 依据（选填）</div>
+          <textarea id="op-reason" rows="2" maxlength="300" placeholder="有依据更容易被采纳"></textarea>
+        </div>
+        <div class="ct-note">说明：这类看法可用于优化文案、引导与内容覆盖，<b>不会改动评分口径与维度权重</b>——评分标准只依据可核对的证据调整。</div>
+      </div>
+
+      <!-- 贴 JD 分析 -->
+      <div class="ct-group" data-kind="jd" style="display:none;">
+        <div class="field">
+          <div class="field-label">粘贴公开 JD 全文 <span class="fb-req">必填</span></div>
+          <textarea id="jd-text" rows="10" maxlength="3000" placeholder="粘贴企业公开招聘的完整 JD（岗位职责 + 任职要求）。系统只提取六维考察点密度做统计，不保存也不展示原文。"></textarea>
+          <div class="fb-count"><span id="jd-n">0</span>/3000</div>
+        </div>
+        <div class="ct-note">仅接受<b>企业公开发布</b>的招聘信息；请勿粘贴内部文档、涉密内容或含个人信息的材料。提交前会在本地把 JD 交给云端模型提取六维考察点，<b>原文不会被保存或展示</b>。</div>
+      </div>
+
+      <div class="ct-who">
+        <div class="field">
+          <div class="field-label">署名昵称（选填，不填即匿名）</div>
+          <input id="ct-nickname" maxlength="24" placeholder="例：某大厂二面幸存者">
+        </div>
+        <label class="sw"><input type="checkbox" id="ct-public"> 若被采纳，同意公开展示在下方案例区</label>
+      </div>
+
+      <div class="fb-redline">
+        可以提到公司，但请用「某电商大厂」这类说法。<b>请勿写内部流程、面试官姓名、原题原文</b>——涉保密与版权的内容一律不采纳。
+      </div>
+
+      <div class="fb-actions">
+        <button class="btn btn-primary" id="ct-send">提交</button>
+      </div>
+      <div class="fb-msg" id="ct-msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ic"></span>已采纳的案例</div>
+      <div id="ct-cases"></div>
+    </div>
+  </div>
+
+  <script src="assets/js/vendor/workbuddy-cloud-sdk.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/cloud.js"></script>
+  <script src="assets/js/analytics.js"></script>
+  <script src="assets/js/llm.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/nav.js"></script>
+  <script src="assets/js/contribute.js"></script>
+</body>
+</html>

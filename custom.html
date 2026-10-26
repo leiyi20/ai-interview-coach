@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自创面试官 · AI 面试教练</title>
+    <meta name="description" content="AI 面试教练自创面试官——自定义岗位与题库，生成专属模拟面试与评分。">
+  <meta name="keywords" content="自定义面试,自建题库,专属面试官,岗位定制">
+  <meta name="author" content="AI 面试教练">
+  <meta property="og:title" content="自创面试官 · AI 面试教练">
+  <meta property="og:description" content="AI 面试教练自创面试官——自定义岗位与题库，生成专属模拟面试与评分。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-interview-58714.app.workbuddy.host/">
+  <meta property="og:site_name" content="AI 面试教练">
+  <meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a6df0'/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="container">
+    <h1 class="page-title">自创面试官</h1>
+    <p class="page-sub">用一句话描述你想要的面试官，再圈定要考的知识范围。它会按这个风格问你这些考点——分数只作练习参考，不进常模、不与标准测评比较。</p>
+
+    <!-- 第一步：人格 -->
+    <div class="card">
+      <div class="card-title"><span class="ic"></span>第一步 · 描述你的面试官</div>
+      <textarea id="persona-text" maxlength="300" placeholder="例如：说话很简短、有点不耐烦的技术负责人，会一直追到我答不上来，不关心我说的场面话。"></textarea>
+      <div class="persona-chips" id="persona-chips"></div>
+      <div class="row-actions">
+        <button class="btn btn-primary" id="btn-parse">解析这段描述</button>
+        <span class="hint" id="parse-msg">写完点这里，系统会把理解结果摊开给你确认</span>
+      </div>
+
+      <div class="parsed" id="parsed" hidden>
+        <div class="parsed-title">系统理解成这样，不对就直接改：</div>
+        <div class="parsed-row"><b>人设</b><span id="p-summary"></span></div>
+        <div class="parsed-row"><b>风格</b><span id="p-desc"></span></div>
+        <div class="parsed-checks">
+          <label class="sw"><input type="checkbox" id="p-interrupt"> 答太长时会打断我</label>
+          <label class="sw"><input type="checkbox" id="p-feedback"> 每题答完先点评一句</label>
+          <label class="sw"><input type="checkbox" id="p-answer"> 直接给答案（转讲解模式，不出评分）</label>
+        </div>
+        <div class="parsed-row">
+          <b>语言</b>
+          <select id="p-lang" style="max-width:180px;">
+            <option value="zh">中文</option>
+            <option value="en">英文</option>
+          </select>
+        </div>
+        <div class="parsed-warn" id="p-unsupported" hidden></div>
+      </div>
+    </div>
+
+    <!-- 第二步：范围 -->
+    <div class="card">
+      <div class="card-title"><span class="ic"></span>第二步 · 圈定考察范围</div>
+      <div class="grid-2">
+        <div class="field">
+          <div class="field-label">主岗位（决定评分权重与岗位匹配基准）</div>
+          <div class="grid-2" style="gap:10px;">
+            <select id="sel-industry"></select>
+            <select id="sel-role"></select>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">层级</div>
+          <select id="sel-level"></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">知识点范围（可跨行业多选，至少 1 个）</div>
+        <div class="tag-filter" id="domain-filter"></div>
+        <div class="tag-pool" id="tag-pool"></div>
+        <div class="picked" id="picked-tags">还没选标签</div>
+      </div>
+
+      <div class="grid-3">
+        <div class="field" style="margin-bottom:0;">
+          <div class="field-label">题量</div>
+          <select id="sel-count">
+            <option value="4">4 题（快练）</option>
+            <option value="6" selected>6 题（标准）</option>
+            <option value="8">8 题</option>
+            <option value="10">10 题</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <div class="field-label">难度</div>
+          <select id="sel-diff">
+            <option value="mixed">混合</option>
+            <option value="简单">简单</option>
+            <option value="中等">中等</option>
+            <option value="困难">困难</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <div class="field-label">每题追问</div>
+          <select id="sel-follow">
+            <option value="0">不追问</option>
+            <option value="1" selected>1 轮</option>
+            <option value="2">2 轮</option>
+          </select>
+        </div>
+      </div>
+      <div class="cov-hint" id="cov-hint"></div>
+    </div>
+
+    <!-- 第三步：试问 -->
+    <div class="card">
+      <div class="card-title"><span class="ic"></span>第三步 · 先听一句再决定</div>
+      <p class="page-sub" style="margin:0 0 12px;font-size:13px;">让它按这个人格就你的一个考点现场问一句。听着不对就回去改描述。</p>
+      <div class="row-actions">
+        <button class="btn" id="btn-preview">让它试问一句</button>
+        <span class="hint" id="preview-msg"></span>
+      </div>
+      <div class="preview-box" id="preview-box" hidden></div>
+    </div>
+
+    <div class="start-actions">
+      <button class="btn btn-primary btn-lg" id="btn-start" disabled>用这个面试官开始 →</button>
+      <p class="page-sub" id="start-hint" style="margin-top:10px;font-size:12px;">需先完成第一步与第二步</p>
+    </div>
+  </main>
+
+  <script src="assets/js/vendor/workbuddy-cloud-sdk.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/cloud.js"></script>
+  <script src="assets/js/analytics.js"></script>
+  <script src="assets/js/llm.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/nav.js"></script>
+  <script src="assets/js/persona.js"></script>
+  <script src="assets/js/custom.js"></script>
+</body>
+</html>
