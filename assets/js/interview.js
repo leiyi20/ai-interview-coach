@@ -207,6 +207,56 @@
   let submitting = false;  // 正在提交作答（防重复提交 / 防超时与手动提交撞车）
   const records = [];     // 每题作答记录
 
+  // —— 面试草稿：中途关页 / 刷新不丢进度 ——
+  // 隐私边界：只存题目与作答文本，**绝不存简历原文**（简历离开页面即清，草稿也不留存）
+  const DRAFT_KEY = 'wb_interview_draft';
+  const DRAFT_TTL = 24 * 3600 * 1000;   // 草稿保留 24 小时
+
+  function draftKey() {
+    return [customMode ? 'custom' : 'standard', industry, role, level, tierKey].join('|');
+  }
+  function saveDraft() {
+    if (customMode) return;                 // 自创模式暂不支持草稿
+    if (idx >= total) return;               // 已答完，交给报告流程
+    try {
+      const done = records.slice(0, idx).filter(Boolean);
+      if (!done.some(r => r && r.answer)) return;   // 一题都没答，不值得存
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        v: 1, key: draftKey(),
+        params: { industry, role, level, tier: tierKey, resume: resumeEnabled ? '1' : '' },
+        paper, idx, total, questions, records: done,
+        elapsedMs: Date.now() - startTime,
+        ts: Date.now()
+      }));
+    } catch (e) { /* 配额不足等：草稿是增强项，失败不影响面试 */ }
+  }
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      if (!d || d.v !== 1 || d.key !== draftKey()) return null;
+      if (!Array.isArray(d.questions) || d.questions.length !== total) return null;
+      if (!(d.idx > 0) || d.idx >= d.questions.length) return null;
+      if (Date.now() - (d.ts || 0) > DRAFT_TTL) { clearDraft(); return null; }
+      return d;
+    } catch (e) { return null; }
+  }
+  function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ } }
+
+  // 重放已答内容，让恢复后的对话看起来是连续的
+  function replayRecords(list) {
+    (list || []).forEach(r => {
+      if (!r) return;
+      if (r.q) bubble('【题】' + r.q, 'ai');
+      if (r.answer) bubble(r.answer, 'me');
+      (r.rounds || []).forEach(rd => {
+        if (rd && rd.q) bubble(rd.q, 'ai');
+        if (rd && rd.a) bubble(rd.a, 'me');
+      });
+    });
+  }
+
   // —— 计时：总用时（结束后冻结）+ 每题独立限时 ——
   const startTime = Date.now();
   let endTime = 0;                        // 结束时刻；一旦写入，总用时不再增长
@@ -743,6 +793,8 @@
     sessionStorage.setItem('interview_result', JSON.stringify(payload));
     // 简历原文到此为止：报告只保留匹配元信息，不再保留简历正文
     try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ }
+    // 面试已完成，草稿使命结束
+    clearDraft();
     // 埋点：面试完成（只记结果元信息，不含任何作答内容）
     if (window.Analytics) window.Analytics.track('interview_finish', {
       mode: customMode ? 'custom' : 'standard',
@@ -817,6 +869,7 @@
       }
     } finally {
       submitting = false;
+      saveDraft();   // 每次提交后落盘：中途关页 / 刷新不丢进度
     }
   }
 
@@ -863,6 +916,7 @@
     stopQTimer();
     updateProgress();
     idx += 1;
+    saveDraft();   // 推进到下一题时落盘（覆盖超时自动提交等不经 send 的路径）
     if (idx < total) {
       const p = nextQPromise; nextQPromise = null;
       await delay(400);
@@ -900,8 +954,59 @@
     aiSay('好的，我们提前结束，正在为你生成已作答部分的报告…').then(finish);
   });
 
+  // 草稿恢复：询问用户要继续还是重来（选择前不自动出题）
+  function offerDraftResume(draft) {
+    return new Promise(resolve => {
+      const answered = (draft.records || []).filter(r => r && r.answer).length;
+      const mins = Math.floor((draft.elapsedMs || 0) / 60000);
+      const el = document.createElement('div');
+      el.className = 'bubble sys';
+      el.style.textAlign = 'left';
+      el.innerHTML =
+        '<div>你有一场未完成的面试：已答 <b>' + answered + '</b> / ' + draft.total + ' 题' +
+        (mins > 0 ? '，已用时约 ' + mins + ' 分钟' : '') + '。</div>' +
+        '<div style="margin-top:4px;">作答内容保存在本机；简历不会留存。</div>' +
+        '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn" id="draft-go" style="padding:7px 14px;font-size:13px;">继续这场面试</button>' +
+        '<button class="btn btn-ghost" id="draft-new" style="padding:7px 14px;font-size:13px;">重新开始</button>' +
+        '</div>';
+      chat.appendChild(el);
+      chat.scrollTop = chat.scrollHeight;
+      $send.disabled = true; $answer.disabled = true;   // 选之前不能作答
+      const done = v => {
+        el.remove();
+        $send.disabled = false; $answer.disabled = false;
+        resolve(v);
+      };
+      el.querySelector('#draft-go').addEventListener('click', () => done(true));
+      el.querySelector('#draft-new').addEventListener('click', () => done(false));
+    });
+  }
+
+  const draft = loadDraft();
+  let resumed = false;
+  if (draft) {
+    const goOn = await offerDraftResume(draft);
+    if (goOn) {
+      // 用草稿里的题目与进度，保证恢复后题目与原来一致
+      questions = draft.questions;
+      if (draft.paper) paper = draft.paper;
+      idx = draft.idx;
+      records.length = 0;
+      (draft.records || []).forEach(r => records.push(r));
+      updateProgress();
+      replayRecords(draft.records);
+      await delay(300);
+      await askQuestion(null);
+      resumed = true;
+    } else {
+      clearDraft();
+    }
+  }
+
   // 开场白 + 第一题（开场白期间预取第一题，隐藏首 token 等待）
-  const firstQPromise = useLLM ? prefetchQuestion(0) : null;
+  const firstQPromise = (!resumed && useLLM) ? prefetchQuestion(0) : null;
+  if (!resumed) {
   if (customMode) {
     const pname = personaCfg.summary || '你的面试官';
     await aiSay('我是按你的设定来的面试官：' + pname + '。今天就问 ' + total + ' 道题' +
@@ -926,4 +1031,5 @@
   }
   await delay(500);
   await askQuestion(firstQPromise);
+  }
 })();
