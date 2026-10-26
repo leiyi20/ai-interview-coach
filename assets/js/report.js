@@ -350,6 +350,22 @@
     document.getElementById('sub').textContent =
       `${R.role} · ${R.level} · ${(R.tierName || '').split('（')[0]} ｜ 用时 ${Math.floor((R.timeSeconds||0)/60)}分${(R.timeSeconds||0)%60}秒 ｜ 共 ${R.questions.length} 题 ｜ 对话：${chatMode === 'llm' ? 'AI 实时' : '规则模拟'} ｜ 评分：${scoreMode === 'llm' ? 'AI 语义级' : '规则模拟'}`;
 
+    // 低匹配提示：简历与岗位匹配不足但用户选择继续 → 报告参考性有限
+    if (R.resume && R.resume.lowMatch) {
+      const warn = document.createElement('div');
+      warn.className = 'card';
+      warn.style.background = '#fff8ec';
+      warn.style.border = '1px solid #f7e0b8';
+      const sc = (R.resume.score != null ? R.resume.score : '—');
+      warn.innerHTML =
+        '<div style="font-size:13.5px;font-weight:600;color:#a86a00;margin-bottom:6px;">低匹配面试 · 结果参考性有限</div>' +
+        '<div style="font-size:12.5px;color:#8a6a2f;line-height:1.75;">' +
+        '简历与该岗位的匹配度为 <b>' + escapeHtml(String(sc)) + ' / 100</b>' +
+        (R.resume.forced ? '（你选择了「仍要继续」）' : '') +
+        '。本场的问题与评分可能偏离该岗位真实要求，建议当作表达练习，而不是岗位匹配结论。</div>';
+      body.appendChild(warn);
+    }
+
     // 分数盘 + 结论
     const hero = document.createElement('div');
     hero.className = 'card';

@@ -23,6 +23,20 @@
   const tierKey = customMode ? 'custom' : (qs.get('tier') || 'bigtech');
   if (!role) { location.href = 'index.html'; return; }
 
+  // —— 简历上下文（来自简历页）——
+  // 仅当岗位/行业与简历页一致时才使用，避免直接改 URL 导致简历串岗。
+  // 只在本次面试内存中使用；结束写报告后即清除，不上传原始简历文本。
+  let resumeCtx = null;
+  if (!customMode) {
+    try {
+      const raw = sessionStorage.getItem('wb_resume');
+      if (raw) {
+        const r = JSON.parse(raw);
+        if (r && r.text && r.role === role && r.industry === industry) resumeCtx = r;
+      }
+    } catch (e) { resumeCtx = null; }
+  }
+
   // 只加载当前行业的题目（不再首屏拉全量题库）
   await D.loadIndustry(industry);
   const tierData = customMode
@@ -46,11 +60,36 @@
     : ((typeof window.LLM !== 'undefined') && window.LLM.isEnabled());
   const llmHistory = [];  // 对话历史（不含 system），用于多轮上下文
 
+  // 简历片段：拼进面试官 system prompt，让出题围绕候选人真实经历
+  function resumeBlock() {
+    if (!resumeCtx) return '';
+    const m = resumeCtx.match || {};
+    const probes = (m.probe_points || []).filter(Boolean).slice(0, 5);
+    const hits = (m.hits || []).filter(Boolean).slice(0, 5);
+    const lines = [
+      '',
+      '【候选人简历摘要】',
+      String(resumeCtx.text || '').slice(0, 1200),
+      ''
+    ];
+    if (hits.length) lines.push('【简历与岗位相符的点】' + hits.join('；'));
+    if (probes.length) lines.push('【优先深挖】' + probes.join('；'));
+    lines.push(
+      '【基于简历的提问要求】',
+      '1. 优先围绕简历里的真实项目、技术栈、职责与结果提问，先深挖简历中的具体点，再按岗位能力维度补齐。',
+      '2. 不要重复询问简历里已经写清楚的事实（例如「你做过什么项目」），要问细节、取舍、失败与结果。',
+      '3. 简历与岗位相关性一般时，仍按岗位能力维度提问，但可从简历中的可迁移经验切入。',
+      '4. 不要编造简历里没有的经历；引用简历内容时只用其中出现过的信息。'
+    );
+    return '\n' + lines.join('\n');
+  }
+
   // 面试官 system prompt：自创模式用解析后的人格，标准模式用档位话术
   function sysPrompt() {
-    return customMode
+    const base = customMode
       ? Persona.buildSystem(personaCfg, { industry, role, level })
       : LLM.buildSystem(industry, role, level, tierData);
+    return base + resumeBlock();
   }
 
   // 顶部信息
@@ -97,13 +136,35 @@
     const mot = await D.sampleMotivation(tierKey, paper);
     if (mot) questions.push(mot);   // 插在最后：真实面试里动机题多在技术问完后
   }
+
+  // 规则模式（未开 AI 对话）下，用匹配阶段得到的「深挖点」补一道简历题，
+  // 让至少有一题围绕候选人真实经历展开；LLM 模式由 system prompt 自然覆盖，无需替换。
+  if (!customMode && !useLLM && resumeCtx) {
+    const probes = ((resumeCtx.match && resumeCtx.match.probe_points) || []).filter(Boolean);
+    if (probes.length && questions.length) {
+      questions[0] = {
+        id: null,
+        type: '简历深挖',
+        level: level,
+        difficulty: '中等',
+        q: '你简历里提到「' + probes[0] + '」。请具体讲讲：你当时负责哪一部分、怎么做的、最后结果如何？',
+        intent: '基于候选人简历深挖真实经历，考察是否亲历、细节是否清晰、有无可验证的结果',
+        followups: [],
+        keywords: [],
+        minutes: 5,
+        _resume: true
+      };
+    }
+  }
+
   const total = questions.length;
   $progress.textContent = '0/' + total;
   // 埋点：面试开始（不记任何作答内容）
   if (window.Analytics) window.Analytics.track('interview_start', {
     mode: customMode ? 'custom' : 'standard',
     paper: customMode ? null : paper,
-    count: total
+    count: total,
+    resume: !!resumeCtx
   });
 
   // 状态
@@ -330,7 +391,18 @@
 
   // 出题请求文案（预取与正式出题共用，保证内容一致）
   function questionPrompt(q, i) {
-    return `【第 ${i + 1}/${total} 题】请出一道面试题。\n本题必须围绕以下核心问题展开（可换自然说法，但考察点不变）：\n「${q.q}」\n题型：${q.type}\n考察意图：${q.intent || ''}\n参考考点关键词：${(q.keywords || []).join('、')}\n只输出题目本身，一句话。`;
+    let p = `【第 ${i + 1}/${total} 题】请出一道面试题。\n本题必须围绕以下核心问题展开（可换自然说法，但考察点不变）：\n「${q.q}」\n题型：${q.type}\n考察意图：${q.intent || ''}\n参考考点关键词：${(q.keywords || []).join('、')}`;
+    // 有简历时，把题目锚定到候选人真实经历上（否则模型容易退回空泛通用问法）
+    if (resumeCtx) {
+      const probes = ((resumeCtx.match && resumeCtx.match.probe_points) || []).filter(Boolean).slice(0, 3);
+      const anchor = probes.length
+        ? probes.join('、')
+        : ((resumeCtx.match && resumeCtx.match.hits) || []).filter(Boolean).slice(0, 3).join('、');
+      if (anchor) {
+        p += `\n候选人简历里提到：${anchor}。请在不改变考察点的前提下，把问题落到他简历里的具体经历或技术上（点名具体项目 / 方案），不要问「你做过什么项目」这类空泛问题。`;
+      }
+    }
+    return p + '\n只输出题目本身，一句话。';
   }
 
   // 静默预取某一题（不渲染），把首 token 的固定延迟藏进开场白/上一题的空档
@@ -499,9 +571,9 @@
         raw = llmScores[i].raw;
         comment = llmScores[i].comment;
         evidence = llmScores[i].evidence || null;
-      } else if (r.type === '求职动机') {
-        // 动机题的 keywords 是「评分要点」长句，关键词命中率必然为 0——
-        // 用词匹配会给出失真的 1 分。规则兜底时按中性 3 分处理，报告已标「参考分」。
+      } else if (r.type === '求职动机' || r.type === '简历深挖') {
+        // 动机题 / 简历深挖题的 keywords 是「评分要点」长句或为空——
+        // 词匹配会给出失真的 1 分。规则兜底时按中性 3 分处理，报告已标「参考分」。
         kh = { hits: [], miss: [], rate: 0 };
         raw = {};
         Object.keys(weights).forEach(k => { raw[k] = 3; });
@@ -603,6 +675,16 @@
         config: personaCfg
       } : null,
       coverage: customPack ? customPack.coverage : null,
+      // 简历匹配元信息：只存判定结果，不存简历原文（报告可能上云存档）
+      resume: resumeCtx ? {
+        score: (resumeCtx.match && resumeCtx.match.score != null) ? resumeCtx.match.score : null,
+        engine: (resumeCtx.match && resumeCtx.match.engine) || null,
+        lowMatch: !!resumeCtx.lowMatch,
+        forced: !!resumeCtx.forced,
+        hits: ((resumeCtx.match && resumeCtx.match.hits) || []).slice(0, 6),
+        gaps: ((resumeCtx.match && resumeCtx.match.gaps) || []).slice(0, 6),
+        probes: ((resumeCtx.match && resumeCtx.match.probe_points) || []).slice(0, 6)
+      } : null,
       evaluation: evaluation,
       scoreMeta: {
         mode: scoreMode,
@@ -623,6 +705,8 @@
     }
 
     sessionStorage.setItem('interview_result', JSON.stringify(payload));
+    // 简历原文到此为止：报告只保留匹配元信息，不再保留简历正文
+    try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ }
     // 埋点：面试完成（只记结果元信息，不含任何作答内容）
     if (window.Analytics) window.Analytics.track('interview_finish', {
       mode: customMode ? 'custom' : 'standard',
@@ -795,9 +879,13 @@
         cov.covered.length + ' 个。', '范围说明');
     }
   } else {
-    const greet = tierData.script_tips ? tierData.script_tips.split('；')[0] : '';
+    // 兜底过滤：script_tips 里可能残留内部文档名（如 xxx.md），不能出现在给用户看的话术里
+    const greet = (tierData.script_tips || '')
+      .split('；')
+      .map(s => s.trim())
+      .filter(s => s && !/\.md\b|process_and_scripts/i.test(s))[0] || '';
     await aiSay('你好，我是你的' + tierData.name.split('（')[0] + '模拟面试官。' +
-      (greet ? greet : '接下来我们会进行一场对话式模拟面试，请放松、像真实面试一样作答。') +
+      (greet ? greet + '。' : '接下来我们会进行一场对话式模拟面试，请放松、像真实面试一样作答。') +
       '准备好了我们就开始。', '面试官');
   }
   await delay(500);
