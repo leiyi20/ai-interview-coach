@@ -152,4 +152,23 @@
   }
 
   fillRoles();
+
+  // 移动端重排：窄屏首屏原是「说明文字 + 行业卡片」，真正的选岗表单被推到第 3 屏
+  // （实测「开始模拟面试」按钮在 y=2692，390×844 的屏幕看不到）。
+  // 把 SEO 说明与行业卡片移到操作区之后——内容仍在 DOM 里（收录不受影响），
+  // 首屏直接出选岗表单。桌面端布局不变。
+  (function mobileReorder() {
+    if (!window.matchMedia('(max-width: 860px)').matches) return;
+    const main = document.querySelector('main');
+    const startBtn = document.getElementById('btn-start');
+    if (!main || !startBtn) return;
+    const anchor = startBtn.closest('div');
+    if (!anchor || anchor.parentElement !== main) return;
+    const grid = document.getElementById('industry-grid');
+    const seo = main.querySelector('.seo-intro');
+    const tip = document.getElementById('onboard-tip');
+    // 新手提示移到按钮之前（滚到按钮时会看到），给首屏腾出表单空间
+    if (tip && tip.parentElement === main) main.insertBefore(tip, anchor);
+    [grid, seo].forEach(el => { if (el && el.parentElement === main) main.appendChild(el); });
+  })();
 })();

@@ -125,6 +125,11 @@
   const $bar = document.getElementById('bar');
   const $progress = document.getElementById('pill-progress');
 
+  // 手机端没有 Enter / Shift+Enter 键，占位提示换成触屏说法（否则用户会找不到「发送」）
+  if ($answer && window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+    $answer.placeholder = '在这里输入你的回答…';
+  }
+
   // 抽题：自创模式按知识点标签组卷，标准模式按岗位+档位抽
   let questions;
   if (customMode) {
