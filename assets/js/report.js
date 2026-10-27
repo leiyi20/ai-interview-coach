@@ -536,6 +536,15 @@
       };
       actEl.appendChild(share);
 
+      // C1 成绩卡图片：把分数画成可分享卡片（下载 / 复制）
+      if (window.ScoreCard) {
+        const cardBtn = document.createElement('button');
+        cardBtn.className = 'btn';
+        cardBtn.textContent = '生成成绩卡';
+        cardBtn.onclick = () => { window.ScoreCard.open(R, norms); };
+        actEl.appendChild(cardBtn);
+      }
+
       // B3 闭环：首屏也放一个回练入口，不必滚到建议卡
       if (!R.customMode) {
         const drill = document.createElement('a');
