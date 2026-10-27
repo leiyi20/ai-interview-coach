@@ -781,6 +781,8 @@
           dimRaw: p.raw,
           evidence: p.evidence || null,
           aiFeedback: p.comment || null,
+          // 练习模式逐题教练点评（标准模式为空）。B3 报告→练习闭环：复盘报告时复用。
+          coach: (p.r.coach && p.r.coach.length) ? p.r.coach : null,
           spentSeconds: (p.r.spentSeconds == null ? null : p.r.spentSeconds),
           limitSeconds: p.r.limitSeconds || qLimitSeconds(p.r),
           overSeconds: p.r.overSeconds || 0,
@@ -788,6 +790,8 @@
         };
       }),
       mode: C.AI_MODE,
+      // B3 报告→练习闭环：标记本场是否练习模式，报告据此渲染逐题教练点评并给出回练入口
+      practiceMode: !!practiceMode,
       chatMode: useLLM ? 'llm' : 'rule',
       scoreMode,
       length: interviewLen || total,      // 本场题量：3/6/9，常模后续可按长度分组

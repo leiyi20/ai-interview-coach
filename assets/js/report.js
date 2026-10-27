@@ -159,6 +159,13 @@
     html += '<div class="advice-next">建议：<a href="index.html">再模拟一次</a>（换个档位或层级对照），'
       + '或去 <a href="tiers.html">分档攻略</a> 看目标档位的考察重点。</div>';
 
+    // B3 闭环：报告直连练习模式，针对本场弱项快速再练一遍
+    if (!R.customMode) {
+      const pu = practiceUrl(R);
+      html += '<div class="advice-cta"><a class="btn btn-primary" href="' + pu + '">用练习模式专练弱项 →</a>'
+        + '<div class="advice-cta-sub">同岗位进入练习模式（快练 3 题），每答一题都会收到一条教练点评，对照本报告的弱项逐项改进。</div></div>';
+    }
+
     el.innerHTML = html;
     return el;
   }
@@ -313,6 +320,37 @@
       + '</div>';
   }
 
+  // B3 报告→练习闭环：练习模式产生的报告，顶部标注「含逐题教练点评」，提示用户可对照看
+  function practiceBadge(R) {
+    if (!R.practiceMode) return '';
+    return '<div class="resume-badge" style="background:#fff7e6;color:#8a5a00;border-color:#ffe0a3;">'
+      + '练习模式 · 含逐题教练点评'
+      + '<div class="resume-badge-sub">每道题都附了琥珀色「教练点评」（陪练建议），可与蓝色「AI 点评」（测评结论）对照看。</div>'
+      + '</div>';
+  }
+
+  // 练习模式逐题教练点评（R.questions[].coach 为字符串数组，可能含主答案 + 追问作答多条）
+  function coachNote(it) {
+    if (!it || !it.coach || !it.coach.length) return '';
+    return '<div class="coach-note"><div class="coach-head">教练点评（练习模式）</div>'
+      + it.coach.map(c => '<div class="coach-item">' + escapeHtml(c) + '</div>').join('')
+      + '</div>';
+  }
+
+  // B3 闭环入口：从报告一键回到同岗位练习模式（快练 3 题），逐题收到教练点评
+  function practiceUrl(R) {
+    if (R.customMode) return '';
+    const p = new URLSearchParams({
+      industry: String(R.industry || ''),
+      role: String(R.role || ''),
+      level: String(R.level || '通用'),
+      tier: String(R.tier || 'bigtech'),
+      practice: '1',
+      len: '3'
+    });
+    return 'interview.html?' + p.toString();
+  }
+
   function resumeBadge(R) {
     const r = R.resume;
     if (!r || r.lowMatch) return '';
@@ -412,6 +450,7 @@
           ${resumeBadge(R)}
           ${scoreFallbackNotice(R)}
           ${backfillNotice(R)}
+          ${practiceBadge(R)}
           ${bandBlock(R, norms)}
           <div style="margin-top:14px;">
             <a class="btn" href="index.html">再模拟一次</a>
@@ -496,6 +535,15 @@
         toast('已导出独立报告 HTML（可发给他人直接打开）');
       };
       actEl.appendChild(share);
+
+      // B3 闭环：首屏也放一个回练入口，不必滚到建议卡
+      if (!R.customMode) {
+        const drill = document.createElement('a');
+        drill.className = 'btn';
+        drill.href = practiceUrl(R);
+        drill.textContent = '练习模式专练弱项';
+        actEl.appendChild(drill);
+      }
     }
 
     // 六维度
@@ -525,7 +573,8 @@
     // 逐题反馈
     const qCard = document.createElement('div');
     qCard.className = 'card';
-    let qHtml = '<div class="card-title"><span class="ic"></span>逐题反馈</div>';
+    let qHtml = '<div class="card-title"><span class="ic"></span>逐题反馈</div>'
+      + (R.practiceMode ? '<div class="coach-legend">蓝色「AI 点评」是测评结论；琥珀色「教练点评」是练习模式下的陪练建议，两者可对照看。</div>' : '');
     (R.questions || []).forEach((it, i) => {
       const kw = (it.hits || []).map(h => `<span class="kw">✓ ${escapeHtml(h)}</span>`).join('') ||
         '<span class="qdiff">未命中关键词</span>';
@@ -542,6 +591,7 @@
         <div class="qdetail"><b>你的回答：</b>${escapeHtml(it.answer || '（未作答）')}</div>
         ${roundsHtml(it)}
         ${it.aiFeedback ? `<div class="qfeedback"><b>AI 点评：</b>${escapeHtml(it.aiFeedback)}</div>` : ''}
+        ${coachNote(it)}
         ${evHtml}
         <div style="margin-top:8px;"><b style="font-size:12px;color:var(--wb-muted);">命中要点：</b><br>${kw}</div>
         ${miss ? `<div style="margin-top:6px;">${miss}</div>` : ''}

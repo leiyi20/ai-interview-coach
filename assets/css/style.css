@@ -242,6 +242,11 @@ textarea{resize:vertical;min-height:96px;line-height:1.7;}
 .qcard .qdetail b{color:var(--wb-text);}
 .qcard .qfeedback{font-size:13px;line-height:1.7;margin-top:10px;padding:10px 12px;border-left:3px solid var(--wb-blue);background:var(--wb-blue-l);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--wb-text);}
 .qcard .qfeedback b{color:var(--wb-blue-d);}
+/* B3 报告→练习闭环：练习模式的逐题教练点评（琥珀色，与面试页教练气泡一致） */
+.coach-note{margin-top:10px;padding:10px 12px 10px 14px;border:1px solid #ffe0a3;border-radius:0 var(--radius-sm) var(--radius-sm) 0;background:#fff7e6;font-size:13px;line-height:1.7;color:#8a5a00;}
+.coach-head{font-size:12px;font-weight:700;color:#b97700;margin-bottom:4px;}
+.coach-item{margin-top:4px;}
+.coach-legend{font-size:12px;color:#b97700;background:#fff9ec;border:1px dashed #ffe0a3;border-radius:8px;padding:6px 10px;margin-bottom:10px;line-height:1.6;}
 .kw{font-size:12px;color:#0f5c47;background:var(--wb-teal-l);border:1px solid #cdeee2;padding:2px 8px;border-radius:6px;margin:3px 3px 0 0;display:inline-block;}
 
 /* tabs */
@@ -399,6 +404,10 @@ body.font-mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Co
 .advice-dim li{margin:2px 0;}
 .advice-action{font-size:13px;color:var(--wb-text);line-height:1.7;background:var(--wb-bg);border-left:3px solid var(--wb-blue);border-radius:6px;padding:10px 12px;}
 .advice-next{font-size:12px;color:var(--wb-muted);margin-top:6px;line-height:1.7;}
+/* B3 闭环入口按钮 */
+.advice-cta{margin-top:14px;}
+.advice-cta .btn{font-size:14px;padding:9px 16px;}
+.advice-cta-sub{font-size:12px;color:var(--wb-muted);margin-top:7px;line-height:1.6;}
 
 /* ===== 综合评估卡 ===== */
 .eval-overall{margin:4px 0 14px;font-size:14px;line-height:1.9;color:var(--wb-text);}

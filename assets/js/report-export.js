@@ -67,6 +67,7 @@ window.ReportExport = (function () {
         <div class="qdetail"><b>你的回答：</b>${escapeHtml(it.answer || '（未作答）')}</div>
         ${it.followupAnswer ? `<div class="qdetail"><b>追问：</b>${escapeHtml(it.followup)}<br><b>追问作答：</b>${escapeHtml(it.followupAnswer)}</div>` : ''}
         ${it.aiFeedback ? `<div class="qfeedback"><b>AI 点评：</b>${escapeHtml(it.aiFeedback)}</div>` : ''}
+        ${it.coach && it.coach.length ? `<div class="qcoach"><b>教练点评（练习模式）：</b>` + it.coach.map(c => '<div>' + escapeHtml(c) + '</div>').join('') + `</div>` : ''}
         <div class="qdetail"><b>命中要点：</b><br>${hits}</div>
         ${miss ? `<div class="qdetail">${miss}</div>` : ''}
       </div>`;
@@ -102,6 +103,7 @@ window.ReportExport = (function () {
   .qtext{font-weight:600;font-size:14px;margin-bottom:10px;} .qdetail{font-size:13px;color:#444;margin-top:6px;}
   .qdetail b{color:var(--text);} .kw{display:inline-block;background:#e6f7f0;color:var(--green);padding:2px 8px;border-radius:6px;font-size:12px;margin:2px 4px 2px 0;} .miss{color:var(--muted);font-size:12px;} .tag{display:inline-block;background:#f1f3f8;color:var(--muted);padding:2px 8px;border-radius:6px;font-size:12px;margin:2px 4px 2px 0;}
   .qfeedback{border-left:3px solid var(--blue);background:var(--blue-l);padding:10px 12px;border-radius:0 8px 8px 0;font-size:13px;margin-top:10px;} .qfeedback b{color:#234;}
+  .qcoach{border-left:3px solid #f0b400;background:#fff7e6;padding:10px 12px;border-radius:0 8px 8px 0;font-size:13px;margin-top:10px;color:#8a5a00;} .qcoach b{color:#b97700;}
   .ev-overall{font-size:14px;line-height:1.9;margin:0 0 14px;color:var(--text);}
   .ev-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
   .ev-label{font-size:12px;font-weight:600;color:var(--muted);}
@@ -125,6 +127,7 @@ window.ReportExport = (function () {
         <div class="meta">量表档位：<b>Band ${stanine}</b> / 9
           <span style="opacity:.75">（按评分量表固定阈值划分，非人群百分位）</span></div>
         <div class="note">${escapeHtml(note)}</div>
+        ${R.practiceMode ? '<div class="meta" style="color:#b97700;margin-top:8px;">本报告来自练习模式 · 含逐题教练点评（琥珀色块）</div>' : ''}
       </div>
     </div>
   </div>
