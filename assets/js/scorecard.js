@@ -18,6 +18,74 @@
     reject:  { bg: '#fdeaea', fg: '#e04848', bd: '#f6c9c9' }
   };
 
+  /* ===== C2 二维码：预生成矩阵（segno 权威生成，内容=站点首页+sharecode，固定不变） ===== */
+  const QR_SIZE = 37;
+  const QR_ROWS = [
+    '1111111011010011110111111111001111111',
+    '1000001011001011011100000010101000001',
+    '1011101011100011001101010100101011101',
+    '1011101000001111110001100100001011101',
+    '1011101011010010101101101100101011101',
+    '1000001001111001000010110110001000001',
+    '1111111010101010101010101010101111111',
+    '0000000001001101111000010100100000000',
+    '1001111111011100000001100001010010111',
+    '1110010000111010111000111001100111110',
+    '1001101000111001101111110101111001001',
+    '0110110000100000110110110000001000111',
+    '0110011010111001100010110000101101001',
+    '0101000110001001101001011111100011010',
+    '1000011110111001101110001001111011111',
+    '1101100101010001000101101010011101110',
+    '0100101000111010011001100001101100111',
+    '0001110001000000010001101111110101000',
+    '0001111010101010101100010111010010001',
+    '0101110001011101101110001100111110001',
+    '0000111001000000110110000011001110000',
+    '1110010101011011110100111111000010110',
+    '0010111101011101100011010111011101001',
+    '1111100110010000101110010001000111100',
+    '1001001010011010010011110100101100000',
+    '1111000011000100001100100101100011100',
+    '1111011110111101000001100111110100011',
+    '1011010010101100100100001000011001110',
+    '1010001101000011100110110101111110111',
+    '0000000010000011011101001010100010110',
+    '1111111011110011111110010000101010001',
+    '1000001010010110100111000111100010001',
+    '1011101010001011101111011111111110000',
+    '1011101010100110000010100011111000101',
+    '1011101000100110010001010101110010101',
+    '1000001001101101011000111010000011111',
+    '1111111011101100100100001010100101001'
+  ];
+  // 在 (x,y) 处绘制 size×size 的二维码（含白底圆角与 4 模块静区）
+  function drawQR(ctx, x, y, size) {
+    roundRect(ctx, x, y, size, size, 16);
+    ctx.fillStyle = '#ffffff'; ctx.fill();
+    ctx.strokeStyle = COL.border; ctx.lineWidth = 1.5; ctx.stroke();
+    const cell = size / (QR_SIZE + 8); // 每边含 4 模块静区
+    const pad = cell * 4;
+    ctx.fillStyle = '#1f2329';
+    for (let r = 0; r < QR_SIZE; r++) {
+      const row = QR_ROWS[r];
+      for (let c = 0; c < QR_SIZE; c++) {
+        if (row.charAt(c) === '1') {
+          ctx.fillRect(Math.round(x + pad + c * cell), Math.round(y + pad + r * cell), Math.ceil(cell), Math.ceil(cell));
+        }
+      }
+    }
+  }
+  // 弹窗用的独立小二维码 canvas
+  function makeQRCanvas(px) {
+    const c = document.createElement('canvas');
+    c.width = px * 2; c.height = px * 2;
+    const ctx = c.getContext('2d');
+    if (ctx.scale) ctx.scale(2, 2);
+    drawQR(ctx, 0, 0, px);
+    return c;
+  }
+
   function roundRect(ctx, x, y, w, h, r) {
     if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
     const rr = Math.min(r, w / 2, h / 2);
@@ -178,10 +246,20 @@
       seg(low.k + ' ' + low.v.toFixed(1), '#e04848', true);
     }
 
-    // 页脚
+    // 页脚 + 二维码（C2）
     const fy = py + ph - 64;
     ctx.strokeStyle = COL.border; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(cx0, fy - 26); ctx.lineTo(cx1, fy - 26); ctx.stroke();
+    // 右下二维码（分隔线上方）
+    const qz = 200;
+    const qx = cx1 - qz, qy = fy - 26 - qz - 12;
+    drawQR(ctx, qx, qy, qz);
+    // 二维码左侧扫码提示
+    ctx.font = '600 27px ' + FONT; ctx.fillStyle = COL.text;
+    ctx.fillText('扫码免费测一测', cx0, qy + qz / 2 - 16);
+    ctx.font = '500 20px ' + FONT; ctx.fillStyle = COL.faint;
+    ctx.fillText('微信 / 相机扫一扫直达', cx0, qy + qz / 2 + 24);
+
     ctx.font = '700 25px ' + FONT; ctx.fillStyle = COL.blue;
     ctx.fillText(SITE_URL, cx0, fy);
     ctx.font = '500 19px ' + FONT; ctx.fillStyle = COL.faint;
@@ -221,9 +299,14 @@
           '<button class="btn btn-primary sc-dl">下载图片</button>' +
           '<button class="btn sc-cp">复制图片</button>' +
         '</div>' +
+        '<div class="sc-qr-wrap">' +
+          '<div class="sc-qr"></div>' +
+          '<div class="sc-qr-info"><b>扫码访问站点</b><span>免费测一测你的面试力 · 6 大行业 113 个岗位</span></div>' +
+        '</div>' +
         '<div class="sc-foot">卡片只含分数与维度概览，不含具体作答，可放心转发到朋友圈 / 小红书 / 微信群。</div>' +
       '</div>';
     overlay.querySelector('.sc-canvas-wrap').appendChild(canvas);
+    try { overlay.querySelector('.sc-qr').appendChild(makeQRCanvas(132)); } catch (e) { /* 二维码失败不影响主流程 */ }
     document.body.appendChild(overlay);
 
     const close = () => overlay.remove();
