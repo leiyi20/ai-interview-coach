@@ -116,13 +116,49 @@
     }
   }
 
+  // —— 面试长度：快练 3 / 标准 6 / 全真 9 ——
+  // 首次访问默认快练（先让人拿到第一份报告，比一次坐满 12 分钟更重要）；
+  // 之后记住上次选择，避免回访用户每次都要重选。
+  const LEN_NOTE = {
+    3: '预计 5 分钟 · 2 道岗位题 + 1 道动机题',
+    6: '预计 12 分钟 · 5 道岗位题 + 1 道动机题',
+    9: '预计 20 分钟 · 8 道岗位题 + 1 道动机题'
+  };
+  const $lenOpts = document.getElementById('len-opts');
+  const $startNote = document.getElementById('start-note');
+  let selectedLen = 3;
+  try {
+    const saved = parseInt(localStorage.getItem('wb_interview_len') || '', 10);
+    if (saved === 3 || saved === 6 || saved === 9) selectedLen = saved;
+  } catch (e) { /* 隐私模式下读不到，用默认值 */ }
+
+  function paintLen() {
+    if ($lenOpts) {
+      Array.prototype.forEach.call($lenOpts.querySelectorAll('.len-opt'), b => {
+        b.classList.toggle('active', Number(b.dataset.len) === selectedLen);
+      });
+    }
+    if ($startNote) $startNote.textContent = LEN_NOTE[selectedLen] + ' · 可随时提前结束';
+  }
+  if ($lenOpts) {
+    $lenOpts.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.len-opt');
+      if (!btn) return;
+      selectedLen = Number(btn.dataset.len) || 3;
+      paintLen();
+      try { localStorage.setItem('wb_interview_len', String(selectedLen)); } catch (e) { /* ignore */ }
+    });
+  }
+  paintLen();
+
   // 组装面试参数（直连面试与走简历页共用）
   function interviewParams() {
     const params = new URLSearchParams({
       industry: $ind.value,
       role: $role.value,
       level: $lvl.value,
-      tier: selectedTier
+      tier: selectedTier,
+      len: String(selectedLen)
     });
     const $depth = document.getElementById('sel-depth');
     const dv = $depth ? $depth.value : 'auto';
@@ -136,7 +172,7 @@
   // 主入口：直接开面，简历不是必经步骤
   $start.addEventListener('click', () => {
     if (window.Analytics) window.Analytics.track('start_direct', {
-      role: $role.value, industry: $ind.value, tier: selectedTier
+      role: $role.value, industry: $ind.value, tier: selectedTier, len: selectedLen
     });
     location.href = 'interview.html?' + interviewParams().toString();
   });
@@ -145,7 +181,7 @@
   if ($resumeBtn) {
     $resumeBtn.addEventListener('click', () => {
       if (window.Analytics) window.Analytics.track('start_with_resume', {
-        role: $role.value, industry: $ind.value, tier: selectedTier
+        role: $role.value, industry: $ind.value, tier: selectedTier, len: selectedLen
       });
       location.href = 'resume.html?' + interviewParams().toString();
     });

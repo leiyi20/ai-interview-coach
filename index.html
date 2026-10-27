@@ -96,11 +96,20 @@
       <div class="card-title"><span class="ic"></span>第二步 · 选择公司档位</div>
       <p class="page-sub" style="margin-bottom:14px;">不同档位的面试逻辑、流程与考察侧重完全不同（大厂考潜力、小厂考即战力、外企考规范、体制内考稳定）。</p>
       <div class="tier-grid" id="tier-grid"></div>
+
+      <div class="len-row">
+        <div class="len-label">面试长度</div>
+        <div class="len-opts" id="len-opts">
+          <button type="button" class="len-opt" data-len="3"><b>快练</b><em>3 题 · 约 5 分钟</em></button>
+          <button type="button" class="len-opt" data-len="6"><b>标准</b><em>6 题 · 约 12 分钟</em></button>
+          <button type="button" class="len-opt" data-len="9"><b>全真</b><em>9 题 · 约 20 分钟</em></button>
+        </div>
+      </div>
     </div>
 
     <div style="margin-top:20px;text-align:center;">
       <button class="btn btn-primary btn-lg" id="btn-start" disabled>开始模拟面试 →</button>
-      <p class="page-sub" style="margin-top:10px;font-size:12px;">预计 10–15 分钟 · 打字作答 · 可随时提前结束</p>
+      <p class="page-sub" style="margin-top:10px;font-size:12px;" id="start-note">预计 5 分钟 · 打字作答 · 可随时提前结束</p>
       <p class="page-sub" id="hint" style="margin-top:6px;"></p>
 
       <div style="margin-top:16px;">

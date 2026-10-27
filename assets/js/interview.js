@@ -107,6 +107,8 @@
 
   // 顶部信息
   let paper = null;   // 轮换卷号 A/B/C（仅标准模式）
+  let interviewLen = 0;    // 本场题量（3 快练 / 6 标准 / 9 全真），组卷时确定
+  let backfillCount = 0;   // 本层级题量不足时从相邻层级补的题数（报告需如实标注）
   if (!customMode) {
     // 卷号要在顶栏渲染前确定：URL 带 paper=A/B/C 则用之，否则自动轮换
     const PAPERS = ['A', 'B', 'C'];
@@ -150,7 +152,17 @@
     // 同岗位+层级+档位+卷号 = 固定一套题，报告记录卷号，常模按卷号分组，跨人才可比。
     // 每场留 1 题位给「求职动机」题（HR 面/终面必考），同样纳入卷号体系：
     // 同卷永远同一道动机题、同一个问法变体，且动机题恰好为弱信息维度补证据。
-    questions = D.sampleQuestions(industry, role, level, tierKey, Math.max(1, C.QUESTIONS_PER_INTERVIEW - 1), paper);
+    //
+    // 面试长度：3 快练 / 6 标准 / 9 全真（URL len 优先，非法值回落到配置默认）。
+    // 题池按岗位×层级只有约 6 题，9 题必然要跨层级补——补了多少必须记下来，报告里如实说明。
+    const LEN_ALLOWED = [3, 6, 9];
+    interviewLen = parseInt(qs.get('len') || '', 10);
+    if (LEN_ALLOWED.indexOf(interviewLen) < 0) interviewLen = C.QUESTIONS_PER_INTERVIEW;
+    const roleQCount = Math.max(1, interviewLen - 1);
+    questions = D.sampleQuestions(industry, role, level, tierKey, roleQCount, paper);
+    // 跨层级补题数：'通用' 题适用于任何层级，不计入
+    const REAL_LEVELS = ['校招', '初级', '中级', '高级'];
+    backfillCount = questions.filter(q => REAL_LEVELS.indexOf(q.level) >= 0 && q.level !== level).length;
     const mot = await D.sampleMotivation(tierKey, paper);
     if (mot) questions.push(mot);   // 插在最后：真实面试里动机题多在技术问完后
   }
@@ -211,7 +223,7 @@
   const DRAFT_TTL = 24 * 3600 * 1000;   // 草稿保留 24 小时
 
   function draftKey() {
-    return [customMode ? 'custom' : 'standard', industry, role, level, tierKey].join('|');
+    return [customMode ? 'custom' : 'standard', industry, role, level, tierKey, interviewLen || total].join('|');
   }
   function saveDraft() {
     if (customMode) return;                 // 自创模式暂不支持草稿
@@ -774,6 +786,8 @@
       mode: C.AI_MODE,
       chatMode: useLLM ? 'llm' : 'rule',
       scoreMode,
+      length: interviewLen || total,      // 本场题量：3/6/9，常模后续可按长度分组
+      backfill: backfillCount,            // 跨层级补题数（本层级题量不足时）
       paper: customMode ? null : paper,   // 轮换卷号，常模按卷号分组
       // 自创面试官：标记 + 人格配置 + 考点覆盖，供报告隔离与标注使用
       customMode: customMode,
@@ -1051,6 +1065,12 @@
     await aiSay('你好，我是你的' + tierData.name.split('（')[0] + '模拟面试官。' +
       (greet ? greet + '。' : '接下来我们会进行一场对话式模拟面试，请放松、像真实面试一样作答。') +
       '准备好了我们就开始。', '面试官');
+    // 题量不足时会从相邻层级补题——开场就说清，别等报告出来才发现难度不对
+    if (backfillCount > 0) {
+      await delay(200);
+      await aiSay('先说明一下：本场 ' + total + ' 道题里有 ' + backfillCount + ' 道来自相邻层级——' +
+        '该岗位在「' + level + '」层级的可用题目不够，已由相邻层级补足，评分照常。', '面试官');
+    }
   }
   await delay(500);
   await askQuestion(firstQPromise);

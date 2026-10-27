@@ -301,6 +301,18 @@
       + '</div>';
   }
 
+  // 跨层级补题说明：岗位在该层级的题量不足以支撑本场题量时，会从相邻层级补题。
+  // 这是既有行为（此前一直静默），报告必须如实说明，否则用户会以为抽到的都是本层级题。
+  function backfillNotice(R) {
+    const n = Number(R.backfill || 0);
+    if (!n) return '';
+    return '<div class="resume-badge" style="background:#eef4ff;color:#2b5fae;border-color:#cddffa;">'
+      + '含 ' + n + ' 道相邻层级题'
+      + '<div class="resume-badge-sub">该岗位在「' + escapeHtml(R.level || '') + '」层级的题量不足以支撑本场 '
+      + escapeHtml(String(R.length || (R.questions || []).length)) + ' 题，其余从相邻层级补充，报告会照常评分。</div>'
+      + '</div>';
+  }
+
   function resumeBadge(R) {
     const r = R.resume;
     if (!r || r.lowMatch) return '';
@@ -399,6 +411,7 @@
           ${customBadge(R)}
           ${resumeBadge(R)}
           ${scoreFallbackNotice(R)}
+          ${backfillNotice(R)}
           ${bandBlock(R, norms)}
           <div style="margin-top:14px;">
             <a class="btn" href="index.html">再模拟一次</a>

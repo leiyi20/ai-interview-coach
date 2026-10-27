@@ -282,12 +282,21 @@ window.Data = (function () {
     } else {
       rnd = Math.random;
     }
-    // 评分：preferred 题型优先，其余按（种子）随机稳定排序
+    // 层级优先级：本层级 > 通用 > 相邻层级（跨度越大越靠后）。
+    // 补题时必须先紧着本层级，否则「选初级」可能抽到一堆高级题——报告就算标注也晚了。
+    const LEVEL_ORDER = ['校招', '初级', '中级', '高级'];
+    const base = LEVEL_ORDER.indexOf(level);
+    const lvRank = q => {
+      if (q.level === level) return 0;
+      if (q.level === '通用' || LEVEL_ORDER.indexOf(q.level) < 0) return 1;
+      return 2 + Math.abs(LEVEL_ORDER.indexOf(q.level) - base);
+    };
+    // 排序键：层级优先 → 档位偏好题型 → （种子）随机稳定排序
     const scored = pool.map(q => {
       const pref = preferred.includes(q.type) ? 1 : 0;
-      return { q, pref, r: rnd() };
+      return { q, lv: lvRank(q), pref, r: rnd() };
     });
-    scored.sort((a, b) => (b.pref - a.pref) || (a.r - b.r));
+    scored.sort((a, b) => (a.lv - b.lv) || (b.pref - a.pref) || (a.r - b.r));
     return scored.slice(0, n).map(s => s.q);
   }
 
