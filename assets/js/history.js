@@ -11,8 +11,7 @@
     const btn = document.getElementById('btn-goto-login');
     if (btn) btn.onclick = () => { if (window.Nav) window.Nav.openAuth(); };
     // 本机未同步的报告入口（P0-4）
-    let pending = null;
-    try { pending = JSON.parse(localStorage.getItem('wb_pending_report') || 'null'); } catch (e) { pending = null; }
+    const pending = window.Store.get('pending');
     if (pending && !document.getElementById('local-report-tip')) {
       const tip = document.createElement('p');
       tip.id = 'local-report-tip';

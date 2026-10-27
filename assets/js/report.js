@@ -68,13 +68,8 @@
       return;
     }
   } else {
-    const raw = sessionStorage.getItem('interview_result') || localStorage.getItem('wb_pending_report');
-    if (!raw) {
-      body.style.display = 'none';
-      noResult.style.display = 'block';
-      return;
-    }
-    try { R = JSON.parse(raw); } catch (e) { R = null; }
+    // 优先级：本场报告（session）> 未登录暂存（local）
+    R = window.Store.get('result') || window.Store.get('pending');
     if (!R) {
       body.style.display = 'none';
       noResult.style.display = 'block';
@@ -100,7 +95,7 @@
       const r = await Auth.api('/reports', { method: 'POST', body: JSON.stringify({ report: R }) });
       if (r && r.id) {
         synced = true;
-        try { localStorage.removeItem('wb_pending_report'); } catch (e) { /* ignore */ }
+        window.Store.remove('pending');
         toast('已保存到云端，正在打开云端报告…');
         setTimeout(() => { location.replace('report.html?id=' + r.id); }, 700);
       }

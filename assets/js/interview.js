@@ -31,27 +31,21 @@
   // 首页「开始模拟面试」直连本页时不带该参数，即使上次的简历还在 sessionStorage 也不会被误用。
   const resumeEnabled = !customMode && qs.get('resume') === '1';
   if (resumeEnabled) {
-    try {
-      const raw = sessionStorage.getItem('wb_resume');
-      if (raw) {
-        const r = JSON.parse(raw);
-        if (r && r.text && r.role === role && r.industry === industry) resumeCtx = r;
-        else sessionStorage.removeItem('wb_resume');   // 陈旧 / 串岗数据：直接用不上，清掉
-      }
-    } catch (e) {
-      resumeCtx = null;
-      try { sessionStorage.removeItem('wb_resume'); } catch (e2) { /* ignore */ }
+    const r = window.Store.get('resume');
+    if (r) {
+      if (r.text && r.role === role && r.industry === industry) resumeCtx = r;
+      else window.Store.remove('resume');   // 陈旧 / 串岗数据：直接用不上，清掉
     }
   } else {
     // 自创面试官不使用简历，残留数据不留
-    try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ }
+    window.Store.remove('resume');
   }
 
   // 隐私：简历原文只在本次面试期间保留。离开页面（跳转 / 返回 / 关闭标签页）立即清除，
   // 与简历页「离开页面或关闭标签页即清除」的承诺一致。
   // 刻意不用 visibilitychange——用户只是切到别的标签页时不该丢掉简历。
   if (resumeCtx) {
-    const clearResume = () => { try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ } };
+    const clearResume = () => { window.Store.clearPrivate(); };
     window.addEventListener('pagehide', clearResume);
     window.addEventListener('beforeunload', clearResume);
   }
@@ -208,8 +202,7 @@
   const records = [];     // 每题作答记录
 
   // —— 面试草稿：中途关页 / 刷新不丢进度 ——
-  // 隐私边界：只存题目与作答文本，**绝不存简历原文**（简历离开页面即清，草稿也不留存）
-  const DRAFT_KEY = 'wb_interview_draft';
+  // 隐私边界：只存题目与作答文本，**绝不存简历原文**（简历由 Store 标为 private，离开即清）
   const DRAFT_TTL = 24 * 3600 * 1000;   // 草稿保留 24 小时
 
   function draftKey() {
@@ -218,31 +211,25 @@
   function saveDraft() {
     if (customMode) return;                 // 自创模式暂不支持草稿
     if (idx >= total) return;               // 已答完，交给报告流程
-    try {
-      const done = records.slice(0, idx).filter(Boolean);
-      if (!done.some(r => r && r.answer)) return;   // 一题都没答，不值得存
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({
-        v: 1, key: draftKey(),
-        params: { industry, role, level, tier: tierKey, resume: resumeEnabled ? '1' : '' },
-        paper, idx, total, questions, records: done,
-        elapsedMs: Date.now() - startTime,
-        ts: Date.now()
-      }));
-    } catch (e) { /* 配额不足等：草稿是增强项，失败不影响面试 */ }
+    const done = records.slice(0, idx).filter(Boolean);
+    if (!done.some(r => r && r.answer)) return;   // 一题都没答，不值得存
+    window.Store.set('draft', {
+      v: 1, key: draftKey(),
+      params: { industry, role, level, tier: tierKey, resume: resumeEnabled ? '1' : '' },
+      paper, idx, total, questions, records: done,
+      elapsedMs: Date.now() - startTime,
+      ts: Date.now()
+    });
   }
   function loadDraft() {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return null;
-      const d = JSON.parse(raw);
-      if (!d || d.v !== 1 || d.key !== draftKey()) return null;
-      if (!Array.isArray(d.questions) || d.questions.length !== total) return null;
-      if (!(d.idx > 0) || d.idx >= d.questions.length) return null;
-      if (Date.now() - (d.ts || 0) > DRAFT_TTL) { clearDraft(); return null; }
-      return d;
-    } catch (e) { return null; }
+    const d = window.Store.get('draft');
+    if (!d || d.v !== 1 || d.key !== draftKey()) return null;
+    if (!Array.isArray(d.questions) || d.questions.length !== total) return null;
+    if (!(d.idx > 0) || d.idx >= d.questions.length) return null;
+    if (Date.now() - (d.ts || 0) > DRAFT_TTL) { clearDraft(); return null; }
+    return d;
   }
-  function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ } }
+  function clearDraft() { window.Store.remove('draft'); }
 
   // 重放已答内容，让恢复后的对话看起来是连续的
   function replayRecords(list) {
@@ -790,9 +777,9 @@
       } catch (e) { /* 存档失败忽略 */ }
     }
 
-    sessionStorage.setItem('interview_result', JSON.stringify(payload));
+    window.Store.set('result', payload);
     // 简历原文到此为止：报告只保留匹配元信息，不再保留简历正文
-    try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ }
+    window.Store.clearPrivate();
     // 面试已完成，草稿使命结束
     clearDraft();
     // 埋点：面试完成（只记结果元信息，不含任何作答内容）
@@ -806,7 +793,7 @@
     });
     // 访客（未登录）把报告留在本地，登录后可一键同步到云端（P0-4）
     if (!savedId) {
-      try { localStorage.setItem('wb_pending_report', JSON.stringify(payload)); } catch (e) { /* ignore */ }
+      window.Store.set('pending', payload);
     }
     // 提示跳转
     const tip = savedId

@@ -74,19 +74,19 @@
   }
 
   function storeResume(text, match, forced) {
-    try {
-      sessionStorage.setItem('wb_resume', JSON.stringify({
-        text: text,
-        match: match,
-        industry: curIndustry,
-        role: curRole,
-        level: curLevel,
-        tier: tierKey,
-        lowMatch: !match.pass,
-        forced: !!forced,
-        at: Date.now()
-      }));
-    } catch (e) { /* 隐私模式可能写不进 sessionStorage，不影响继续 */ }
+    // 经统一存储层写入：resume 被声明为 private（仅 session、离开即清），
+    // 若有人误改成 localStorage，Store 会直接拒绝并报错
+    window.Store.set('resume', {
+      text: text,
+      match: match,
+      industry: curIndustry,
+      role: curRole,
+      level: curLevel,
+      tier: tierKey,
+      lowMatch: !match.pass,
+      forced: !!forced,
+      at: Date.now()
+    });
   }
 
   // ---- 字数统计 ----
@@ -98,7 +98,7 @@
 
   // ---- 跳过简历 ----
   $skip.addEventListener('click', () => {
-    try { sessionStorage.removeItem('wb_resume'); } catch (e) { /* ignore */ }
+    window.Store.remove('resume');
     track('resume_skip', { role: curRole, industry: curIndustry });
     location.href = interviewUrl();
   });
