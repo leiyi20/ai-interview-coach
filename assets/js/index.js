@@ -151,6 +151,30 @@
   }
   paintLen();
 
+  // 练习模式：逐题点评（默认标准）。与长度一样记忆上次选择。
+  const $modeOpts = document.getElementById('mode-opts');
+  let selectedPractice = 0;
+  try {
+    if (localStorage.getItem('wb_interview_practice') === '1') selectedPractice = 1;
+  } catch (e) { /* 隐私模式下读不到，用默认值 */ }
+  function paintMode() {
+    if ($modeOpts) {
+      Array.prototype.forEach.call($modeOpts.querySelectorAll('.mode-opt'), b => {
+        b.classList.toggle('active', Number(b.dataset.practice) === selectedPractice);
+      });
+    }
+  }
+  if ($modeOpts) {
+    $modeOpts.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.mode-opt');
+      if (!btn) return;
+      selectedPractice = Number(btn.dataset.practice) || 0;
+      paintMode();
+      try { localStorage.setItem('wb_interview_practice', selectedPractice ? '1' : '0'); } catch (e) { /* ignore */ }
+    });
+  }
+  paintMode();
+
   // 组装面试参数（直连面试与走简历页共用）
   function interviewParams() {
     const params = new URLSearchParams({
@@ -160,6 +184,7 @@
       tier: selectedTier,
       len: String(selectedLen)
     });
+    if (selectedPractice) params.set('practice', '1');
     const $depth = document.getElementById('sel-depth');
     const dv = $depth ? $depth.value : 'auto';
     if (dv && dv !== 'auto') params.set('depth', dv);
@@ -172,7 +197,7 @@
   // 主入口：直接开面，简历不是必经步骤
   $start.addEventListener('click', () => {
     if (window.Analytics) window.Analytics.track('start_direct', {
-      role: $role.value, industry: $ind.value, tier: selectedTier, len: selectedLen
+      role: $role.value, industry: $ind.value, tier: selectedTier, len: selectedLen, practice: selectedPractice
     });
     location.href = 'interview.html?' + interviewParams().toString();
   });
@@ -181,7 +206,7 @@
   if ($resumeBtn) {
     $resumeBtn.addEventListener('click', () => {
       if (window.Analytics) window.Analytics.track('start_with_resume', {
-        role: $role.value, industry: $ind.value, tier: selectedTier, len: selectedLen
+        role: $role.value, industry: $ind.value, tier: selectedTier, len: selectedLen, practice: selectedPractice
       });
       location.href = 'resume.html?' + interviewParams().toString();
     });

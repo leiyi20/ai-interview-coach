@@ -457,8 +457,32 @@ window.LLM = (function () {
     });
   }
 
+  // 练习模式：对单条作答给一句即时点评（不超过两句，聚焦最该补的点 + 一句改法）。
+  // 独立 system prompt，不写入面试官对话历史（llmHistory），避免污染出题/追问上下文。
+  async function coachComment(answer, q, ctx) {
+    const ans = String(answer || '').slice(0, 600);
+    if (!ans.trim()) return null;
+    const sys = '你是一位严格的面试教练，只说人话、不客套、不泛泛夸奖。' +
+      '候选人正在练习「' + (ctx.role || '') + '」岗位模拟面试（' + (ctx.level || '') + ' / ' + (ctx.tierName || '') + '）。' +
+      '你会看到一道面试题、它的考察意图与参考考点，以及候选人的回答。' +
+      '请输出一句（最多两句）即时点评：点出这个回答最该补的一个具体点（结构 / 量化 / 深度 / 贴合岗位 / 诚实度），' +
+      '并给一句可直接照做的改法。不要重复问题，不要客套话，总字数控制在 45 字以内。';
+    const user = '题目：' + (q.q || '') + '\n题型：' + (q.type || '') +
+      '\n考察意图：' + (q.intent || '') + '\n参考考点：' + ((q.keywords || []).join('、')) +
+      '\n\n候选人回答：\n「' + ans + '」\n\n点评：';
+    try {
+      const text = await chat(
+        [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        { temperature: 0.6 }
+      );
+      return (text || '').trim().slice(0, 120) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   return {
     load, save, clear, isEnabled, isScoreEnabled,
-    listModels, chat, buildSystem, scoreInterview, summarize, DEFAULTS
+    listModels, chat, buildSystem, scoreInterview, summarize, coachComment, DEFAULTS
   };
 })();

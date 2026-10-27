@@ -10,6 +10,7 @@
   const level = qs.get('level') || '通用';
   const tierKey = qs.get('tier') || 'bigtech';
   const lenParam = qs.get('len') || '';   // 面试长度 3/6/9，原样带给面试页
+  const practiceParam = qs.get('practice') || '';   // 练习模式 1，原样带给面试页
   const depth = qs.get('depth') || '';
 
   if (!role) { location.href = 'index.html'; return; }
@@ -70,6 +71,7 @@
   function interviewUrl(extra) {
     const p = new URLSearchParams({ industry: curIndustry, role: curRole, level: curLevel, tier: tierKey });
     if (lenParam) p.set('len', lenParam);
+    if (practiceParam) p.set('practice', practiceParam);   // 透传练习模式
     if (depth && depth !== 'auto') p.set('depth', depth);
     Object.keys(extra || {}).forEach(k => { if (extra[k]) p.set(k, extra[k]); });
     return 'interview.html?' + p.toString();

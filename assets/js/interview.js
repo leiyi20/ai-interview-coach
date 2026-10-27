@@ -23,6 +23,10 @@
   const tierKey = customMode ? 'custom' : (qs.get('tier') || 'bigtech');
   if (!role) { location.href = 'index.html'; return; }
 
+  // 练习模式：逐题即时点评（可选，默认标准模式）。与自创面试的 mode=custom 正交，用 practice=1 控制。
+  // 标准模式：全程沉默，只在结尾出报告（沉浸测评）。练习模式：每答一题异步给一句教练点评。
+  const practiceMode = qs.get('practice') === '1';
+
   // —— 简历上下文（来自简历页）——
   // 仅当岗位/行业与简历页一致时才使用，避免直接改 URL 导致简历串岗。
   // 只在本次面试内存中使用；结束写报告后即清除，不上传原始简历文本。
@@ -872,6 +876,7 @@
     records[idx].intent = questions[idx].intent;
     records[idx].keywords = questions[idx].keywords;
     if (!records[idx].rounds) records[idx].rounds = [];
+    if (!records[idx].coach) records[idx].coach = [];   // 练习模式逐题点评（标准模式为空）
   }
 
   async function send() {
@@ -886,6 +891,7 @@
       if (phase === 'question') {
         fillRecord();
         records[idx].answer = text;
+        coach(text, questions[idx], null);   // 练习模式：主答案即时点评（异步，不阻塞追问）
 
         if (maxFollowups <= 0) { await finishQuestion(); return; }
 
@@ -896,6 +902,7 @@
         nextQPromise = (useLLM && idx + 1 < total) ? prefetchQuestion(idx + 1) : null;
       } else if (phase === 'followup') {
         if (records[idx].rounds[followupIdx]) records[idx].rounds[followupIdx].a = text;
+        coach(text, questions[idx], followupIdx);   // 练习模式：追问作答也点评
         followupIdx += 1;
         records[idx].spentSeconds = Math.floor(elapsedQ());
         if (followupIdx < maxFollowups) {
@@ -936,6 +943,24 @@
     } finally {
       resumeQTimer();
     }
+  }
+
+  // 练习模式：对一条作答异步给一句即时点评。fire-and-forget，不阻塞面试官追问/下一题。
+  // 用独立 system prompt 调 LLM（coachComment），不写入 llmHistory，不污染面试官出题上下文。
+  function coach(answer, q, roundIdx) {
+    if (!practiceMode || !useLLM) return;
+    const ci = idx;
+    const el = bubble('教练点评生成中…', 'coach');
+    LLM.coachComment(String(answer).slice(0, 600), q, { industry, role, level, tierName: tierData.name })
+      .then(function (txt) {
+        if (txt && el && el.firstChild) {
+          el.firstChild.nodeValue = txt;
+          if (records[ci] && Array.isArray(records[ci].coach)) records[ci].coach.push(txt);
+        } else if (el) {
+          el.remove();   // 取不到点评就悄悄撤掉占位，不干扰对话
+        }
+      })
+      .catch(function () { if (el) el.remove(); });
   }
 
   // 当前题结束：更新进度、进入下一题或收尾
@@ -1070,6 +1095,11 @@
       await delay(200);
       await aiSay('先说明一下：本场 ' + total + ' 道题里有 ' + backfillCount + ' 道来自相邻层级——' +
         '该岗位在「' + level + '」层级的可用题目不够，已由相邻层级补足，评分照常。', '面试官');
+    }
+    // 练习模式开场说明：用系统提示（不是面试官说的），避免人设混淆
+    if (practiceMode) {
+      await delay(200);
+      sysBubble('已开启练习模式：每答一题会收到一条独立的教练点评（琥珀色气泡），面试官的节奏不受影响。');
     }
   }
   await delay(500);
