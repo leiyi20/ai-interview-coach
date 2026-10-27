@@ -612,8 +612,9 @@
     const useLLMScore = (typeof window.LLM !== 'undefined') && window.LLM.isScoreEnabled();
     let llmScores = null; // [{raw, comment}] 与 records 同序
     let scoreFailReason = ''; // AI 评分失败原因（非空表示已降级为规则分）
+    let progEl = null; // 评分进度气泡
     if (useLLMScore) {
-      await aiSay('我正在按评分表逐题核对你的作答，并生成综合评估。题数较多时通常需要 40–60 秒，请保持页面打开…', '评分中');
+      await aiSay('我正在按评分表逐题核对你的作答，然后生成综合评估。分批并行评分，通常 15–30 秒…', '评分中');
       try {
         const st = D.getScoring();
         const rubrics = (st && st.dimensions || []).map(d => ({
@@ -629,15 +630,45 @@
             ? r.rounds.map(x => x.a).filter(Boolean).join('\n')
             : r.followupAnswer
         }));
-        llmScores = await LLM.scoreInterview(items, {
+        const scoreCtx = {
           industry, role, level, tierName: tierData.name, weights, rubrics,
           guidelines: (st && st.scoring_guidelines) || []
-        });
+        };
+
+        // 一次请求评 6 题实测约 43 秒（约 5.3 秒固定开销 + 6.3 秒/题）——用户多半以为卡死而关页。
+        // 拆成每题一批并行（实测 6 路并发 11 秒、未被限流），单批失败先重试一次，仍失败才整体降级规则分。
+        const BATCH = 1;
+        const batches = [];
+        for (let i = 0; i < items.length; i += BATCH) batches.push(items.slice(i, i + BATCH));
+        let doneBatches = 0;
+        const unit = BATCH === 1 ? '题' : '批';
+        progEl = bubble('正在评分 0 / ' + batches.length + ' ' + unit + '（共 ' + items.length + ' 题）…', '评分中');
+        const setProg = t => { if (progEl && progEl.firstChild) progEl.firstChild.nodeValue = t; };
+
+        const runBatch = async (slice) => {
+          let part;
+          try {
+            part = await LLM.scoreInterview(slice, scoreCtx);
+          } catch (e1) {
+            await delay(700);
+            part = await LLM.scoreInterview(slice, scoreCtx); // 再失败则抛出，交给外层降级
+          }
+          doneBatches += 1;
+          setProg('已完成 ' + doneBatches + ' / ' + batches.length + ' ' + unit + '…');
+          return part;
+        };
+
+        const parts = await Promise.all(batches.map(runBatch));
+        llmScores = [].concat.apply([], parts);
+        setProg('语义评分完成，共 ' + items.length + ' 题；正在生成综合评估…');
       } catch (e) {
         console.warn('AI 语义评分失败，回退规则评分：', e);
         llmScores = null;
         // 记下失败原因：规则兜底不能静默进行，报告里要明确告诉用户这份分是怎么来的
         scoreFailReason = (e && e.message) ? String(e.message).slice(0, 120) : '未知原因';
+        if (progEl && progEl.firstChild) {
+          progEl.firstChild.nodeValue = '语义评分未完成，已改用规则参考分（具体原因见报告）。';
+        }
       }
     }
 
