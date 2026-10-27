@@ -73,6 +73,28 @@ window.ReportExport = (function () {
       </div>`;
     }).join('');
 
+    // 反问环节（独立印象评价，不计总分；旧报告无此字段不渲染）
+    const ra = R.reverseAsk || null;
+    const raHtml = !ra ? '' : (() => {
+      let h = `<div class="card"><div class="card-title">反问环节（印象评价 · 不计入总分）</div>`;
+      if (ra.skipped || !(ra.items || []).length) {
+        h += `<div class="ra-skipnote">这一场你在反问环节没有提问。现实中这容易被解读为兴趣不足——哪怕问一个「团队现在最需要解决什么」也比沉默好。</div>`;
+      } else {
+        const lbl = (ra.overall && ra.overall.label) || '平平';
+        const cls = lbl === '加分项' ? 'hire' : (lbl === '减分项' ? 'reject' : 'pending');
+        h += `<div class="ra-overall"><span class="verdict ${cls}">${escapeHtml(lbl)}</span>`
+          + `<span class="ra-overall-text">${escapeHtml((ra.overall && ra.overall.comment) || '')}</span></div>`;
+        (ra.items || []).forEach((it, i) => {
+          const dot = it.verdict === 'good' ? '<span class="ra-dot good">好问题</span>'
+            : it.verdict === 'bad' ? '<span class="ra-dot bad">欠妥</span>' : '<span class="ra-dot mid">一般</span>';
+          h += `<div class="ra-item"><div class="ra-q"><b>问${i + 1}：</b>${escapeHtml(it.q || '')} ${dot}</div>`
+            + (it.comment ? `<div class="ra-comment">${escapeHtml(it.comment)}</div>` : '') + `</div>`;
+        });
+      }
+      h += `<div class="ra-tip">好反问的方向：团队当前要解决的问题、岗位的预期产出、真实的工作方式——这些是搜索引擎查不到、也只有面试官能告诉你的。</div></div>`;
+      return h;
+    })();
+
     const note = scoreMode === 'llm'
       ? '本份报告采用 AI 语义级评分，由大模型依据六维评分表对作答内容逐题打分，并给出逐题点评。AI 不单独做录用决策，2.5~4.0 区间建议人工复核。'
       : '本份报告为规则模拟评分，基于关键词命中和作答特征估算各维度得分，仅供体验。';
@@ -104,6 +126,12 @@ window.ReportExport = (function () {
   .qdetail b{color:var(--text);} .kw{display:inline-block;background:#e6f7f0;color:var(--green);padding:2px 8px;border-radius:6px;font-size:12px;margin:2px 4px 2px 0;} .miss{color:var(--muted);font-size:12px;} .tag{display:inline-block;background:#f1f3f8;color:var(--muted);padding:2px 8px;border-radius:6px;font-size:12px;margin:2px 4px 2px 0;}
   .qfeedback{border-left:3px solid var(--blue);background:var(--blue-l);padding:10px 12px;border-radius:0 8px 8px 0;font-size:13px;margin-top:10px;} .qfeedback b{color:#234;}
   .qcoach{border-left:3px solid #f0b400;background:#fff7e6;padding:10px 12px;border-radius:0 8px 8px 0;font-size:13px;margin-top:10px;color:#8a5a00;} .qcoach b{color:#b97700;}
+  .ra-overall{display:flex;align-items:center;gap:10px;margin-bottom:12px;} .ra-overall-text{font-size:13.5px;}
+  .ra-skipnote{font-size:13px;color:#8a5555;background:#fdf3f3;border:1px solid #f3d8d8;border-radius:8px;padding:10px 12px;}
+  .ra-item{border-left:3px solid var(--border);padding:2px 0 2px 12px;margin-top:10px;} .ra-q{font-size:13.5px;} .ra-comment{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .ra-dot{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:1px 8px;margin-left:4px;vertical-align:1px;}
+  .ra-dot.good{background:#e6f7f0;color:var(--green);} .ra-dot.mid{background:#eef1f7;color:var(--muted);} .ra-dot.bad{background:#fdecec;color:var(--red);}
+  .ra-tip{font-size:12px;color:var(--muted);margin-top:14px;border-top:1px dashed var(--border);padding-top:10px;}
   .ev-overall{font-size:14px;line-height:1.9;margin:0 0 14px;color:var(--text);}
   .ev-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
   .ev-label{font-size:12px;font-weight:600;color:var(--muted);}
@@ -143,6 +171,8 @@ window.ReportExport = (function () {
     <div class="card-title">逐题反馈</div>
     ${qHtml || '<div class="note">无题目数据</div>'}
   </div>
+
+  ${raHtml}
 
   <div class="foot">本报告由「AI 面试教练」生成 · ${new Date((R.ts || Date.now())).toLocaleString('zh-CN')}</div>
 </div></body></html>`;

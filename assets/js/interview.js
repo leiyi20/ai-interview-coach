@@ -222,6 +222,14 @@
   let submitting = false;  // 正在提交作答（防重复提交 / 防超时与手动提交撞车）
   const records = [];     // 每题作答记录
 
+  // —— 反问环节（面试尾声候选人向面试官提问；现实面试的标配收尾）——
+  // 评分独立展示于报告，不计入六维总分（印象分性质，与真实面试一致）。
+  const RA_MAX = 3;         // 最多 3 问，与现实节奏一致
+  const raData = D.findReverseAsk ? D.findReverseAsk(industry, role) : null; // 岗位反问题话术 + rubric
+  const raRecords = [];     // {q, a}：候选人问题 + 面试官回答
+  let raDone = false;       // 反问环节是否已结束（含跳过/未提问）
+  let raResult = null;      // 评分结果 {items, overall}（写入报告）
+
   // —— 面试草稿：中途关页 / 刷新不丢进度 ——
   // 隐私边界：只存题目与作答文本，**绝不存简历原文**（简历由 Store 标为 private，离开即清）
   const DRAFT_TTL = 24 * 3600 * 1000;   // 草稿保留 24 小时
@@ -792,6 +800,9 @@
       mode: C.AI_MODE,
       // B3 报告→练习闭环：标记本场是否练习模式，报告据此渲染逐题教练点评并给出回练入口
       practiceMode: !!practiceMode,
+      // 反问环节（面试尾声候选人提问）：独立印象评价，不计六维总分。
+      // 未走到反问环节（提前结束等）时为 null，报告不渲染该卡片。
+      reverseAsk: raResult || null,
       chatMode: useLLM ? 'llm' : 'rule',
       scoreMode,
       length: interviewLen || total,      // 本场题量：3/6/9，常模后续可按长度分组
@@ -914,6 +925,9 @@
         } else {
           await finishQuestion();
         }
+      } else if (phase === 'reverseask') {
+        // 反问环节：这里的输入是「问题」不是「作答」，走独立处理
+        await handleReverseAsk(text);
       }
     } finally {
       submitting = false;
@@ -989,21 +1003,163 @@
       await askQuestion(p);
       return;
     }
-    // 题已答完：先冻结总用时，避免把「AI 收尾寒暄」的时间算进面试时长
-    if (!endTime) endTime = Date.now();
+    // 题已答完：进入反问环节（现实面试里「你有什么想问我的吗」是标配收尾；
+    // 反问时间计入面试总时长，endTime 在反问结束后冻结）
+    await enterReverseAsk();
+  }
+
+  // —— 反问环节 ——
+  // 引导：用该岗位反问题的引导话术开场 + 一条可收起的提示条（好问题方向 + 跳过按钮）。
+  async function enterReverseAsk() {
+    phase = 'reverseask';
+    const guide = (raData && raData.q) || '我的问题都问完了。你有什么想问我们的吗？可以问 2-3 个你真正关心的问题。';
+    await aiSay(guide, '反问环节');
+    raHint();
+  }
+
+  // 提示条：好问题方向（来自岗位反问题 keywords，即评分 rubric）+ 结束方式说明 + 跳过按钮
+  function raHint() {
+    const ex = (D.reverseAskExamples ? D.reverseAskExamples(industry, role) : []).slice(0, 4);
+    const el = document.createElement('div');
+    el.className = 'bubble sys';
+    el.style.textAlign = 'left';
+    let html = '<div>不知道问什么？可以从这些方向想（也完全可以按你自己的关心点问）：</div>';
+    if (ex.length) {
+      html += '<ul style="margin:6px 0 0 16px;padding:0;font-size:12.5px;color:var(--wb-muted);line-height:1.9;">'
+        + ex.map(x => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul>';
+    }
+    html += '<div style="margin-top:8px;">问 1–3 个都可以；不想问了，直接说「没有了」，或点下面按钮。</div>'
+      + '<div style="margin-top:8px;"><button class="btn btn-ghost" id="ra-skip" style="padding:5px 12px;font-size:12px;">我不问了，直接出报告</button></div>';
+    el.innerHTML = html;
+    chat.appendChild(el);
+    el.querySelector('#ra-skip').addEventListener('click', function () {
+      if (phase === 'reverseask') endReverseAsk();
+    });
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // 规则模式的面试官回答：分域通用回复（诚实降级，不假装知道公司内部信息）
+  function ruleInterviewerAnswer(text) {
+    if (/薪资|工资|待遇|薪水|薪酬/.test(text)) return '薪资区间和结构在我们这是统一标准，HR 环节会和你详细沟通，这里就不报具体数字了。';
+    if (/加班|强度|作息|大小周|几点下班/.test(text)) return '节奏跟着项目和阶段走，忙的时候肯定有，但整体是有计划地推进，不鼓励无意义的耗时间。';
+    if (/培训|成长|导师|带教|晋升|发展/.test(text)) return '新人有导师带，前三个月以熟悉业务为主；后面的发展按能力和产出说话，路径是清楚的。';
+    if (/技术栈|架构|框架|系统/.test(text)) return '团队用的都是业内主流的方案，具体细节入职后会有系统介绍，这里就不展开了。';
+    return '简单说，团队目前正处在业务上升期，要做的事有挑战也有空间。更多细节等你入职后会了解得更全面。';
+  }
+
+  // 练习模式：对一个反问给即时教练点评（fire-and-forget，不阻塞面试官回答）
+  function coachRA(question) {
+    if (!practiceMode || !useLLM) return;
+    const el = bubble('教练点评生成中…', 'coach');
+    LLM.coachReverseAsk(String(question).slice(0, 300), {
+      role, level, tierName: tierData.name, keywords: (raData && raData.keywords) || []
+    }).then(function (txt) {
+      if (txt && el && el.firstChild) el.firstChild.nodeValue = txt;
+      else if (el) el.remove();
+    }).catch(function () { if (el) el.remove(); });
+  }
+
+  // 候选人在反问环节说了一句话：结束语检测 → 结束；否则当作一个问题处理
+  async function handleReverseAsk(text) {
+    if (/^(没|不)(有)?了?(什么)?(想问的?)?[了嘛呢吗]?[，。!！~\s]*$|^(就|先)这些[，。!！~\s]*$|^没有(什么)?(想问的?|问题)[了嘛呢吗]?[，。!！~\s]*$|^ok$|^好的?[，。!！~\s]*$/i.test(text)) {
+      await endReverseAsk();
+      return;
+    }
+    if (raRecords.length >= RA_MAX) { await endReverseAsk(); return; }   // 防御：满 3 问自动收
+    const rec = { q: text, a: null };
+    raRecords.push(rec);
+    coachRA(text);
+    const meta = '反问 ' + (raRecords.length);
     if (useLLM) {
       try {
-        await llmTurn(
+        const ans = await llmTurn(
           sysPrompt(),
-          '面试已结束，请简短收尾（一两句话），告诉候选人稍后查看评分报告。',
-          0.5,
-          null
+          '候选人在反问环节提出了一个问题，请你以面试官身份直接回答这个问题本身（2-3 句，自然口语，可信具体）。'
+          + '不要出题、不要评价他的问题、不要反问他。遇到薪资具体数字等 HR 环节的话题，用面试官的标准话术礼貌绕开。\n'
+          + '候选人的问题：「' + text + '」',
+          0.7,
+          meta
         );
+        rec.a = ans;
       } catch (e) {
-        await aiSay('好的，今天的所有问题都问完了。感谢你的时间，我们稍后见分晓。');
+        const fb = ruleInterviewerAnswer(text);
+        rec.a = fb;
+        await aiSay(fb, meta);
       }
     } else {
-      await aiSay('好的，今天的所有问题都问完了。感谢你的时间，我们稍后见分晓。');
+      const fb = ruleInterviewerAnswer(text);
+      rec.a = fb;
+      await aiSay(fb, meta);
+    }
+    if (raRecords.length >= RA_MAX) {
+      await delay(300);
+      await aiSay('好的，今天的问题就到这里，感谢你的时间。');
+      await endReverseAsk();
+    } else {
+      await aiSay('还有其他想了解的吗？');
+    }
+  }
+
+  // 反问环节评分：LLM 优先（rubric 用岗位反问题 keywords），失败降级规则评分。
+  // 一个问题都没问也照实评（现实中不问就是减分项），评语给建设性建议。
+  async function scoreRA() {
+    if (!raRecords.length) {
+      return {
+        items: [], skipped: true,
+        overall: { label: '减分项', comment: '反问环节没有提出任何问题。现实面试中这容易被解读为兴趣不足或准备不足——哪怕只问一个团队现状或岗位预期类的问题，也会完全不同。' }
+      };
+    }
+    if (useLLM && window.LLM && LLM.scoreReverseAsk) {
+      try {
+        const r = await LLM.scoreReverseAsk(raRecords, { role, level, keywords: (raData && raData.keywords) || [] });
+        if (r) return r;
+      } catch (e) { /* 降级 */ }
+    }
+    return ruleScoreReverseAsk();
+  }
+
+  // 规则评分：按岗位 keywords 的核心词命中 + 敏感/偷懒问题特征分档
+  function ruleScoreReverseAsk() {
+    const kw = (raData && raData.keywords) || [];
+    const items = raRecords.map(r => {
+      const t = String(r.q || '');
+      const good = kw.some(k => {
+        const core = (String(k).split('：')[1] || k).replace(/[^一-鿿a-zA-Z0-9]/g, '').slice(0, 6);
+        return core && t.includes(core);
+      });
+      const sensitive = /薪资|工资|待遇|薪水|加班|福利|年终/.test(t);
+      const lazy = /公司(是做什么|主营|介绍)|官网|百度/.test(t);
+      let verdict = 'neutral';
+      let comment = '问题合理但偏通用——补一句你为什么关心这一点，信息量和印象都会更好。';
+      if (good) { verdict = 'good'; comment = '问题切中要害，能看出你对岗位做过思考。'; }
+      else if (lazy) { verdict = 'bad'; comment = '这类信息公开渠道就能查到，反问它等于告诉对方你没做功课。'; }
+      else if (sensitive) { verdict = 'neutral'; comment = '关心待遇很正常，但作为反问首选显得动机单薄，建议搭配业务/成长类问题。'; }
+      return { q: t, verdict, comment };
+    });
+    const goods = items.filter(i => i.verdict === 'good').length;
+    const bads = items.filter(i => i.verdict === 'bad').length;
+    const allMoney = items.length > 0 && items.every(i => /薪资|工资|待遇|薪水|加班|福利/.test(i.q));
+    let label = '平平';
+    let comment = '反问中规中矩。想加分，可以问团队正在解决的问题、或这个岗位半年内的预期产出。';
+    if (goods >= 1 && bads === 0 && items.length >= 2) { label = '加分项'; comment = '反问有分量、有准备痕迹，能看出你对这个岗位是认真的。'; }
+    else if (bads >= 1 || allMoney) { label = '减分项'; comment = '反问没体现出对岗位本身的兴趣——先问业务与成长，再谈待遇，印象会完全不同。'; }
+    return { items, overall: { label, comment } };
+  }
+
+  // 结束反问：评分 → 收尾寒暄 → 出报告。反问时间计入面试总时长（此处冻结 endTime）。
+  async function endReverseAsk() {
+    if (raDone) return;
+    raDone = true;
+    if (!endTime) endTime = Date.now();
+    raResult = await scoreRA();
+    if (useLLM) {
+      try {
+        await llmTurn(sysPrompt(), '面试已结束，请简短收尾（一两句话），告诉候选人稍后查看评分报告。', 0.5, null);
+      } catch (e) {
+        await aiSay('好的，今天的交流就到这里。感谢你的时间，稍后见分晓。');
+      }
+    } else {
+      await aiSay('好的，今天的交流就到这里。感谢你的时间，稍后见分晓。');
     }
     await delay(600);
     finish();
@@ -1016,6 +1172,8 @@
 
   document.getElementById('btn-end').addEventListener('click', () => {
     if (records.length === 0) { location.href = 'index.html'; return; }
+    // 反问环节中提前结束：已问的问题照常评分进报告（不问出报告 = 减分项，如实呈现）
+    if (phase === 'reverseask') { endReverseAsk(); return; }
     if (!endTime) endTime = Date.now();   // 点下即冻结，避免把提示语的时间也算进去
     aiSay('好的，我们提前结束，正在为你生成已作答部分的报告…').then(finish);
   });
@@ -1062,8 +1220,14 @@
       (draft.records || []).forEach(r => records.push(r));
       updateProgress();
       replayRecords(draft.records);
+      clearDraft();   // 草稿内容已进内存，之后每次提交会重新落盘；不留在原地
       await delay(300);
-      await askQuestion(null);
+      if (idx >= total) {
+        // 上次已在反问环节中断：题目已答完，重进反问（反问进度不进草稿，重新问）
+        await finishQuestion();
+      } else {
+        await askQuestion(null);
+      }
       resumed = true;
     } else {
       clearDraft();

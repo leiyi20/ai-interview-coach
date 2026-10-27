@@ -608,6 +608,37 @@
     });
     qCard.innerHTML = qHtml;
     body.appendChild(qCard);
+
+    // 反问环节（独立印象评价，不计六维总分；旧报告无此字段不渲染）
+    if (R.reverseAsk) body.appendChild(reverseAskCard(R.reverseAsk));
+  }
+
+  // 「反问环节」卡片：综合印象标签 + 综合评语 + 逐条问题与点评
+  // 现实面试里反问是印象分——这里如实呈现，并在评语里给可照做的提升建议。
+  function reverseAskCard(ra) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const cls = ra.overall && ra.overall.label === '加分项' ? 'hire'
+      : (ra.overall && ra.overall.label === '减分项' ? 'reject' : 'pending');
+    let html = '<div class="card-title"><span class="ic"></span>反问环节（印象评价 · 不计入总分）</div>';
+    if (ra.skipped || !(ra.items || []).length) {
+      html += '<div class="ra-skipnote">这一场你在反问环节没有提问。现实中这容易被解读为兴趣不足——'
+        + '哪怕问一个「团队现在最需要解决什么」也比沉默好。</div>';
+    } else {
+      html += `<div class="ra-overall"><span class="band ${cls}">${escapeHtml((ra.overall && ra.overall.label) || '平平')}</span>`
+        + `<span class="ra-overall-text">${escapeHtml((ra.overall && ra.overall.comment) || '')}</span></div>`;
+      (ra.items || []).forEach((it, i) => {
+        const dot = it.verdict === 'good' ? '<span class="ra-dot good">好问题</span>'
+          : it.verdict === 'bad' ? '<span class="ra-dot bad">欠妥</span>' : '<span class="ra-dot mid">一般</span>';
+        html += `<div class="ra-item">`
+          + `<div class="ra-q"><b>问${i + 1}：</b>${escapeHtml(it.q)} ${dot}</div>`
+          + (it.comment ? `<div class="ra-comment">${escapeHtml(it.comment)}</div>` : '')
+          + `</div>`;
+      });
+    }
+    html += '<div class="ra-tip">好反问的方向：团队当前要解决的问题、岗位的预期产出、真实的工作方式——这些是搜索引擎查不到、也只有面试官能告诉你的。</div>';
+    card.innerHTML = html;
+    return card;
   }
 
   function escapeHtml(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}

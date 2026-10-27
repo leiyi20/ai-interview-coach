@@ -481,8 +481,93 @@ window.LLM = (function () {
     }
   }
 
+  // —— 反问环节（面试尾声候选人向面试官提问）——
+
+  // 面试官现场回答候选人的反问：像真实面试官一样给 2-3 句可信回答，不装死不敷衍。
+  // 敏感问题（薪资数字、内部决策、评价候选人自己）用真实面试官的标准话术绕开。
+  async function answerCandidateQuestion(question, askedCount, ctx) {
+    const q = String(question || '').slice(0, 300);
+    if (!q.trim()) return null;
+    const sys = [
+      '你是一位专业、自然的真实面试官，正在面试「' + (ctx.role || '') + '」岗位（' + (ctx.level || '') + '）候选人。',
+      '面试的全部问题已经问完，现在是候选人反问环节（他第 ' + (askedCount + 1) + ' 次提问）。你要像真实面试官一样回答：',
+      '1. 回答要具体、可信、口语化，2-3 句话；可以合理虚构公司/团队的细节（团队规模、技术栈、业务方向等），但要符合行业常识、前后一致，不要明显编造数字以外的夸张承诺。',
+      '2. 遇到薪资具体数字、加班时长承诺、或其他候选人有权利在 HR 环节了解的问题，用真实面试官的标准话术礼貌绕开（如「薪资区间和结构 HR 环节会和你详细沟通」），不要编造具体数字。',
+      '3. 如果候选人问「我刚才表现怎么样」这类问题，礼貌表示结果由流程统一反馈，不评价。',
+      '4. 不要反问候选人，不要出题，不要评价他的问题（自然回答即可），不要用 Markdown。'
+    ].join('\n');
+    const user = '候选人问你：「' + q + '」\n请以面试官身份直接回答（2-3 句）。';
+    try {
+      const text = await chat(
+        [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        { temperature: 0.7 }
+      );
+      return (text || '').trim().slice(0, 300) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 反问环节评分：输入候选人提出的问题列表（按序），输出逐条评语 + 综合印象标签。
+  // rubric 直接来自该岗位反问题的 keywords（好反问特征清单）。
+  // 返回 { items:[{q, verdict:'good'|'neutral'|'bad', comment}], overall:{label:'加分项'|'平平'|'减分项', comment} }
+  async function scoreReverseAsk(questions, ctx) {
+    const list = (questions || []).map(q => String(q.q || q || '').slice(0, 200)).filter(s => s.trim());
+    const rubric = (ctx && ctx.keywords || []).join('；');
+    const sys = [
+      '你是一位资深面试官，正在复盘一位候选人在面试尾声反问环节的表现。',
+      '真实面试里，反问环节是印象分：好问题体现动机真实、做过功课、关注点成熟；泛泛而问平平；',
+      '一个问题都不问、问百度能查到的信息、或首选只问薪资福利加班，现实中会扣印象分。',
+      '本次的评估参考（该岗位好反问特征）：' + (rubric || '（无，按常识判断）')
+    ].join('\n');
+    const user = '候选人共提出 ' + list.length + ' 个问题：\n' +
+      list.map((q, i) => (i + 1) + '. ' + q).join('\n') +
+      '\n\n请严格输出 JSON（不要多余文字）：' +
+      '{"items":[{"q":"问题原文","verdict":"good|neutral|bad","comment":"该问题好在哪/差在哪，20-40字，具体不客套"}],' +
+      '"overall":{"label":"加分项|平平|减分项 三选一","comment":"综合印象评价，30-50字，并给一句提升建议"}}';
+    try {
+      const text = await chat(
+        [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        { temperature: 0.2 }
+      );
+      const m = text.match(/\{[\s\S]*\}/);
+      if (!m) return null;
+      const obj = JSON.parse(m[0]);
+      if (!obj || !Array.isArray(obj.items) || !obj.overall) return null;
+      const ok = { good: 1, neutral: 1, bad: 1 };
+      obj.items = obj.items.filter(it => it && it.q && ok[it.verdict]).slice(0, list.length);
+      const lbl = String(obj.overall.label || '');
+      obj.overall.label = (lbl.indexOf('加分') >= 0) ? '加分项' : (lbl.indexOf('减分') >= 0) ? '减分项' : '平平';
+      obj.overall.comment = String(obj.overall.comment || '').slice(0, 150);
+      return obj;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 练习模式：对候选人的一个反问给即时教练点评（好在哪/怎么改）。独立 prompt，不写面试官历史。
+  async function coachReverseAsk(question, ctx) {
+    const q = String(question || '').slice(0, 300);
+    if (!q.trim()) return null;
+    const rubric = (ctx && ctx.keywords || []).slice(0, 5).join('；');
+    const sys = '你是一位严格的面试教练，只说人话、不客套。候选人正在练习「' + (ctx.role || '') + '」岗位模拟面试，' +
+      '刚进入面试尾声的反问环节。好反问的特征：' + (rubric || '问业务挑战、岗位预期、团队现状，体现做过功课。') +
+      ' 请对他提出的这个问题输出一句（最多两句）点评：说明它属于哪一档（好/一般/欠妥）+ 一句可照做的改法。总字数 45 字以内，不要 Markdown。';
+    const user = '候选人反问：「' + q + '」\n\n点评：';
+    try {
+      const text = await chat(
+        [{ role: 'system', content: sys }, { role: 'user', content: user }],
+        { temperature: 0.6 }
+      );
+      return (text || '').trim().slice(0, 120) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   return {
     load, save, clear, isEnabled, isScoreEnabled,
-    listModels, chat, buildSystem, scoreInterview, summarize, coachComment, DEFAULTS
+    listModels, chat, buildSystem, scoreInterview, summarize, coachComment,
+    answerCandidateQuestion, scoreReverseAsk, coachReverseAsk, DEFAULTS
   };
 })();

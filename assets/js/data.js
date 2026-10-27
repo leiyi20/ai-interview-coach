@@ -146,6 +146,10 @@ window.Data = (function () {
 
     if (!cands.length) return empty;
 
+    // 反问题是收尾环节专属，不进主卷（自创面试官模式同样遵守）
+    const filtered = cands.filter(q => q.type !== '反问');
+    if (!filtered.length) return empty;
+
     // 先保证每个标签至少出一道，再随机补足，避免只考到一两个标签
     const picked = [];
     const taken = {};
@@ -155,13 +159,13 @@ window.Data = (function () {
       taken[key] = 1; picked.push(q); return true;
     };
     const byTag = {};
-    cands.forEach(q => q._hitTags.forEach(t => { (byTag[t] = byTag[t] || []).push(q); }));
+    filtered.forEach(q => q._hitTags.forEach(t => { (byTag[t] = byTag[t] || []).push(q); }));
     shuffle(tags.slice()).forEach(t => {
       if (picked.length >= want) return;
       const pool = (byTag[t] || []).slice().sort((a, b) => b._rank - a._rank);
       for (const q of pool) { if (take(q)) break; }
     });
-    shuffle(cands.slice()).sort((a, b) => b._rank - a._rank).forEach(q => {
+    shuffle(filtered.slice()).sort((a, b) => b._rank - a._rank).forEach(q => {
       if (picked.length < want) take(q);
     });
 
@@ -246,6 +250,32 @@ window.Data = (function () {
     return all.filter(q => q.level === level || q.level === '通用');
   }
 
+  // —— 反问环节（面试尾声候选人向面试官提问）——
+  // 反问题不进主卷（收尾环节专属），这里单独取该岗位的反问题作为引导话术与评分 rubric。
+  // 找不到岗位专属反问题时回退到通用 rubric（所有岗位都能走通反问环节）。
+  const REVERSE_ASK_FALLBACK = {
+    q: '我的问题都问完了。你有什么想问我们的吗？可以问 2-3 个你真正关心的问题。',
+    intent: '考察反问质量，判断候选人对岗位的思考深度与求职动机真实性',
+    keywords: [
+      '问业务与技术挑战：团队当前最大的技术瓶颈是什么',
+      '问岗位预期：这个岗位半年内希望我产出什么',
+      '问团队现状：技术栈、协作流程、当前痛点',
+      '问成长：新人如何上手、有没有导师与成长路径',
+      '不问百度能查到的基础信息，不优先问薪资福利加班',
+      '体现出已经研究过公司和产品'
+    ]
+  };
+  function findReverseAsk(industryName, roleName) {
+    const qs = getQuestions(industryName, roleName);
+    const q = qs.find(x => x && x.type === '反问');
+    if (q && q.q) return { q: q.q, intent: q.intent || REVERSE_ASK_FALLBACK.intent, keywords: (q.keywords && q.keywords.length) ? q.keywords : REVERSE_ASK_FALLBACK.keywords };
+    return Object.assign({}, REVERSE_ASK_FALLBACK);
+  }
+  // 好问题示例（提示条用）：keywords 本身就是"可以问什么"的短语，直接展示前 4 条
+  function reverseAskExamples(industryName, roleName) {
+    return findReverseAsk(industryName, roleName).keywords.slice(0, 4);
+  }
+
   // —— 抽题（结合 tier 题库侧重） ——
   // 可复现的伪随机（mulberry32）：同一 seed 永远得到同一套卷，这是常模可比性的基础
   function seededRandom(seed) {
@@ -267,10 +297,11 @@ window.Data = (function () {
   // 轮换 3 套卷：paper 为 'A'/'B'/'C'。同岗位+层级+档位+卷号 = 固定一套题，
   // 报告记录卷号，常模按卷号分组，跨人才可比。paper 为空时退回随机（自创模式用）。
   function sampleQuestions(industryName, roleName, level, tierKey, n, paper) {
-    let pool = getQuestionsByLevel(industryName, roleName, level);
+    // 反问题是收尾环节专属引导话术，绝不进主卷（否则收尾时面试官再问一遍"你有什么想问的"就穿帮了）
+    let pool = getQuestionsByLevel(industryName, roleName, level).filter(q => q.type !== '反问');
     // 兜底：当前层级题量不足时，纳入同岗位其他层级，保证一场面试题量充足
     if (pool.length < n) {
-      const all = getQuestions(industryName, roleName);
+      const all = getQuestions(industryName, roleName).filter(q => q.type !== '反问');
       const extra = all.filter(q => !pool.includes(q));
       pool = pool.concat(extra);
     }
@@ -444,6 +475,7 @@ window.Data = (function () {
     loadAll, loadCatalog, loadIndustry, loadNorm, loadTagIndex, sampleByTags, loadMotivation, sampleMotivation,
     getIndustry, listIndustries, getIndustryBlurb, listRoles, listLevels,
     getRole, getQuestions, getQuestionsByLevel, sampleQuestions,
+    findReverseAsk, reverseAskExamples,
     keywordHit, scoreQuestion, dimensionWeights, weightedTotal,
     stanineOf, verdict, shuffle, clamp, round1, round2,
     getScoring,
