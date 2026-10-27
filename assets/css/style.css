@@ -144,6 +144,11 @@ textarea{resize:vertical;min-height:96px;line-height:1.7;}
 .tier-card .tname{font-weight:700;font-size:15px;margin-bottom:6px;}
 .tier-card .tdesc{font-size:12px;color:var(--wb-muted);line-height:1.5;}
 
+/* 首页「先试一题」轻量入口（不选岗，降低首访门槛） */
+.try-entry{font-size:13.5px;color:var(--wb-muted);margin:10px 0 0;}
+.try-entry a{color:var(--wb-blue);font-weight:600;text-decoration:none;border-bottom:1px dashed var(--wb-blue);padding-bottom:1px;}
+.try-entry a:hover{border-bottom-style:solid;}
+
 /* 面试长度：三档分段控件（快练 / 标准 / 全真） */
 .len-row{margin-top:18px;padding-top:16px;border-top:1px dashed var(--wb-border);}
 .len-label{font-size:13px;font-weight:600;color:var(--wb-text);margin-bottom:10px;}
