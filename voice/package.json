@@ -1,0 +1,13 @@
+{
+  "name": "voice-interview",
+  "version": "1.0.0",
+  "private": true,
+  "description": "语音电话式 AI 模拟面试（BYOK 代理后端 + 通话页）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

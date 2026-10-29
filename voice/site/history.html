@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的历史 · AI 面试教练</title>
+    <meta name="description" content="AI 面试教练——查看我的历史面试记录、逐场得分与进步轨迹。">
+  <meta name="keywords" content="面试历史,面试记录,面试复盘">
+  <meta name="author" content="AI 面试教练">
+  <meta property="og:title" content="我的历史 · AI 面试教练">
+  <meta property="og:description" content="AI 面试教练——查看我的历史面试记录、逐场得分与进步轨迹。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-interview-58714.app.workbuddy.host/">
+  <meta property="og:image" content="https://ai-interview-58714.app.workbuddy.host/assets/img/og-cover.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="AI 面试教练 · 覆盖 6 大行业 113 个岗位的模拟面试平台">
+  <meta name="twitter:image" content="https://ai-interview-58714.app.workbuddy.host/assets/img/og-cover.jpg">
+  <meta property="og:site_name" content="AI 面试教练">
+  <meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a6df0'/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="container">
+    <h1 class="page-title">我的面试历史</h1>
+    <p class="page-sub">登录后保存的每场模拟面试报告都在这里，跨设备可随时回看（需在同一后端账号下）。</p>
+
+    <div id="history-empty" class="card" style="display:none;">
+      <p style="margin:0 0 12px;">你还没有保存过报告。完成一场模拟面试并登录，结果会自动存档到这里。</p>
+      <a class="btn btn-primary" href="index.html">去开始一场模拟</a>
+    </div>
+
+    <div id="history-login" class="card" style="display:none;">
+      <p style="margin:0 0 12px;">请先登录，才能查看你保存的面试历史。</p>
+      <button class="btn btn-primary" id="btn-goto-login">登录 / 注册</button>
+    </div>
+
+    <div id="trends"></div>
+
+    <div id="history-list"></div>
+  </main>
+
+  <script src="assets/js/vendor/workbuddy-cloud-sdk.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/storage.js"></script>
+  <script src="assets/js/cloud.js"></script>
+  <script src="assets/js/analytics.js"></script>
+  <script src="assets/js/llm.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/nav.js"></script>
+  <script src="assets/js/report-export.js"></script>
+  <script src="assets/js/history.js"></script>
+</body>
+</html>

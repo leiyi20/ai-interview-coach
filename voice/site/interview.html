@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>模拟面试间 · AI 面试教练</title>
+    <meta name="description" content="AI 面试教练模拟面试间——与 AI 面试官实时对话，按目标岗位出题、追问并生成逐题评分报告。">
+  <meta name="keywords" content="模拟面试,AI面试,在线面试,面试练习,实时对话">
+  <meta name="author" content="AI 面试教练">
+  <meta property="og:title" content="模拟面试间 · AI 面试教练">
+  <meta property="og:description" content="AI 面试教练模拟面试间——与 AI 面试官实时对话，按目标岗位出题、追问并生成逐题评分报告。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-interview-58714.app.workbuddy.host/">
+  <meta property="og:image" content="https://ai-interview-58714.app.workbuddy.host/assets/img/og-cover.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="AI 面试教练 · 覆盖 6 大行业 113 个岗位的模拟面试平台">
+  <meta name="twitter:image" content="https://ai-interview-58714.app.workbuddy.host/assets/img/og-cover.jpg">
+  <meta property="og:site_name" content="AI 面试教练">
+  <meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a6df0'/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="container">
+    <div class="topbar">
+      <span class="pill" id="pill-role">岗位 —</span>
+      <span class="pill" id="pill-level">层级 —</span>
+      <span class="pill" id="pill-tier">档位 —</span>
+      <span class="pill">进度 <b id="pill-progress">0/0</b></span>
+      <span class="pill">总用时 <b id="pill-time">00:00</b></span>
+      <span class="pill" id="pill-qtime">本题 —</span>
+      <button class="btn" id="btn-end" style="margin-left:auto;">结束并看报告</button>
+    </div>
+    <div class="bar" style="margin-bottom:18px;"><span id="bar" style="width:0%"></span></div>
+
+    <div class="card">
+      <div class="chat" id="chat"></div>
+      <div class="chat-input-bar" id="input-bar">
+        <textarea id="answer" placeholder="在这里输入你的回答…（Enter 发送，Shift+Enter 换行）" enterkeyhint="enter"></textarea>
+        <button class="btn btn-primary" id="btn-send">发送</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/js/vendor/workbuddy-cloud-sdk.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/storage.js"></script>
+  <script src="assets/js/cloud.js"></script>
+  <script src="assets/js/analytics.js"></script>
+  <script src="assets/js/llm.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/nav.js"></script>
+  <script src="assets/js/feedback.js"></script>
+  <script src="assets/js/persona.js"></script>
+  <script src="assets/js/interview.js"></script>
+</body>
+</html>

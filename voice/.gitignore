@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# workbuddy / editor artifacts
+.workbuddy/
+*.genie
+.wbapp_*.genie
+
+# env / secrets (never committed)
+.env
+.env.*
+
+# temp / build
+/tmp/
+dist/
+.cache/

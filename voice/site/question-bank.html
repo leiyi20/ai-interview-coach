@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>题库 / 知识点 · AI 面试教练</title>
+    <meta name="description" content="AI 面试教练题库——按行业、岗位、知识点浏览真实面试题与评分要点，支持关键词检索。">
+  <meta name="keywords" content="面试题库,面试知识点,面试题,行业面试题">
+  <meta name="author" content="AI 面试教练">
+  <meta property="og:title" content="题库 / 知识点 · AI 面试教练">
+  <meta property="og:description" content="AI 面试教练题库——按行业、岗位、知识点浏览真实面试题与评分要点，支持关键词检索。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ai-interview-58714.app.workbuddy.host/">
+  <meta property="og:image" content="https://ai-interview-58714.app.workbuddy.host/assets/img/og-cover.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="AI 面试教练 · 覆盖 6 大行业 113 个岗位的模拟面试平台">
+  <meta name="twitter:image" content="https://ai-interview-58714.app.workbuddy.host/assets/img/og-cover.jpg">
+  <meta property="og:site_name" content="AI 面试教练">
+  <meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a6df0'/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="container">
+    <h1 class="page-title">题库与知识点导航</h1>
+    <p class="page-sub">按行业、岗位、题型、知识点标签筛选题目，展开查看评分要点与参考答案框架。</p>
+
+    <div class="card">
+      <div class="field">
+        <div class="field-label">搜索题目（题干 / 考察意图 / 关键词）</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input id="f-q" type="search" placeholder="如：线程池、留存、结构化面试、HACCP" style="flex:1;min-width:220px;">
+          <button class="btn" id="btn-search-all">搜全库 →</button>
+          <button class="btn btn-ghost" id="btn-clear">清除</button>
+        </div>
+        <p class="page-sub" id="q-hint" style="margin-top:6px;font-size:12px;"></p>
+      </div>
+      <div class="grid-3">
+        <div class="field"><div class="field-label">行业</div><select id="f-industry"></select></div>
+        <div class="field"><div class="field-label">岗位</div><select id="f-role"></select></div>
+        <div class="field"><div class="field-label">题型</div><select id="f-type"></select></div>
+      </div>
+      <div class="field"><div class="field-label">知识点标签</div><select id="f-tag"></select></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="ic"></span>题目列表 <span id="count" style="color:var(--wb-muted);font-weight:400;font-size:13px;"></span></div>
+      <div id="list"></div>
+    </div>
+  </main>
+
+  <script src="assets/js/vendor/workbuddy-cloud-sdk.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/cloud.js"></script>
+  <script src="assets/js/analytics.js"></script>
+  <script src="assets/js/llm.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/nav.js"></script>
+  <script src="assets/js/feedback.js"></script>
+  <script src="assets/js/question-bank.js"></script>
+</body>
+</html>

@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>AI 模拟面试 · 实时试跑</title>
+<style>
+  :root{--bg:#0b0f17;--bg2:#131a26;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.10);
+    --text:#eef2f7;--muted:#93a0b4;--accent:#4f8cff;--accent2:#28c0a8;--danger:#ff4d5e;--ai:rgba(79,140,255,.16);--me:rgba(40,192,168,.18);}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:radial-gradient(120% 120% at 50% 0%,var(--bg2),var(--bg) 60%);color:var(--text);
+    display:flex;align-items:center;justify-content:center;overflow:hidden}
+  #app{position:relative;width:100%;max-width:420px;height:100%;max-height:880px;
+    background:linear-gradient(180deg,#0e1420,#0a0e16);display:flex;flex-direction:column;overflow:hidden}
+  @media(min-width:460px){#app{border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.55);height:92vh}}
+  .statusbar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:13px;color:var(--muted)}
+  .statusbar .brand{color:var(--accent);font-weight:600;letter-spacing:.5px}
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 20px 0;min-height:0}
+  .avatar-wrap{position:relative;margin-top:14px}
+  .avatar{width:92px;height:92px;border-radius:50%;background:linear-gradient(135deg,#2b6cff,#28c0a8);
+    display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700;color:#fff;box-shadow:0 10px 30px rgba(43,108,255,.35)}
+  .avatar-wrap::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid transparent}
+  .avatar-wrap.speaking::after{border-color:rgba(79,140,255,.6);animation:pulse 1.4s ease-out infinite}
+  @keyframes pulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.25);opacity:0}}
+  .role-name{margin-top:12px;font-size:18px;font-weight:600}
+  .call-state{margin-top:4px;font-size:13px;color:var(--muted);min-height:18px}
+  .timer{margin-top:10px;font-size:26px;font-variant-numeric:tabular-nums;letter-spacing:1px;color:#cdd7e6}
+  .viz{display:flex;align-items:flex-end;gap:4px;height:30px;margin-top:10px;opacity:.35;transition:opacity .3s}
+  .viz.speaking{opacity:1}
+  .viz span{width:4px;height:6px;border-radius:2px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+  .viz.speaking span{animation:bars .9s ease-in-out infinite}
+  .viz span:nth-child(2){animation-delay:.1s}.viz span:nth-child(3){animation-delay:.2s}
+  .viz span:nth-child(4){animation-delay:.3s}.viz span:nth-child(5){animation-delay:.15s}
+  .viz span:nth-child(6){animation-delay:.25s}.viz span:nth-child(7){animation-delay:.05s}
+  @keyframes bars{0%,100%{height:6px}50%{height:26px}}
+  .subtitles{flex:1;width:100%;margin-top:12px;overflow-y:auto;padding:6px 2px 10px;display:flex;flex-direction:column;gap:10px}
+  .subtitles.hidden{display:none}
+  .bubble{max-width:84%;padding:10px 13px;border-radius:14px;font-size:14.5px;line-height:1.5;word-break:break-word;animation:rise .25s ease}
+  .bubble .tag{display:block;font-size:11px;color:var(--muted);margin-bottom:3px}
+  .bubble.ai{align-self:flex-start;background:var(--ai);border-top-left-radius:4px}
+  .bubble.me{align-self:flex-end;background:var(--me);border-top-right-radius:4px}
+  .bubble.sys{align-self:center;background:rgba(255,77,94,.12);border:1px solid rgba(255,77,94,.25);font-size:12.5px;color:#ffb3ba}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .controls{display:flex;align-items:center;justify-content:space-around;padding:12px 24px calc(8px + env(safe-area-inset-bottom))}
+  .ctrl{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:none;color:var(--text);cursor:pointer;font-size:12px}
+  .ctrl .ic{width:50px;height:50px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;transition:.2s}
+  .ctrl.active .ic{background:rgba(79,140,255,.25);border-color:var(--accent)}
+  .ctrl.hangup .ic{background:var(--danger);border-color:var(--danger);width:62px;height:62px}
+  .ctrl.hangup{color:#ffd2d6}.ctrl:active .ic{transform:scale(.92)}
+  svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .talkbar{display:flex;flex-direction:column;align-items:center;gap:5px;padding:4px 0 2px}
+  .talkbtn{width:60px;height:60px;border-radius:50%;background:var(--accent);border:none;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(79,140,255,.35);cursor:pointer;transition:.2s}
+  .talkbtn.rec{background:var(--danger);animation:recpulse 1.2s infinite}
+  .talkbtn:active{transform:scale(.94)}
+  @keyframes recpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,77,94,.5)}50%{box-shadow:0 0 0 12px rgba(255,77,94,0)}}
+  .talklbl{font-size:11px;color:var(--muted)}
+  .vad-dot{width:9px;height:9px;border-radius:50%;background:var(--accent2);margin-bottom:3px}
+  .vad-dot.rec{background:var(--danger);animation:recpulse 1.2s infinite}
+  .vad-dot.busy{background:var(--accent);animation:recpulse 1.6s infinite}
+  .vad-dot.off{background:#5b6576}
+  .micwarn{display:none;font-size:11.5px;line-height:1.55;color:#ffcf8f;background:rgba(255,180,60,.10);border:1px solid rgba(255,180,60,.3);border-radius:10px;padding:8px 10px;margin:2px 0 0;width:100%}
+  .micwarn.show{display:block}
+  .micwarn b{color:#ffd9a8}
+  .openbtn{display:inline-block;margin:0 2px;padding:2px 8px;border-radius:8px;border:1px solid rgba(255,180,60,.5);background:rgba(255,180,60,.15);color:#ffd9a8;font-size:11px;cursor:pointer}
+  .upl{display:inline-block;margin-top:7px;font-size:11px;color:var(--muted);text-decoration:underline;cursor:pointer}
+  .answer{padding:0 16px 8px}
+  .answer input{width:100%;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);font-size:14px;outline:none}
+  .answer .lbl{font-size:11px;color:var(--muted);margin:0 2px 5px}
+  .ringing{position:absolute;inset:0;background:linear-gradient(180deg,#0e1420,#0a0e16);z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:26px}
+  .ringing.hide{display:none}
+  .ringing .avatar{width:104px;height:104px;font-size:40px;animation:breathe 2.4s ease-in-out infinite}
+  @keyframes breathe{0%,100%{transform:scale(1);box-shadow:0 10px 30px rgba(43,108,255,.35)}50%{transform:scale(1.05);box-shadow:0 14px 44px rgba(43,108,255,.55)}}
+  .ringing h1{font-size:20px;margin:18px 0 2px}.ringing p{color:var(--muted);font-size:13.5px;margin:0}
+  .keyrow{width:100%;margin-top:20px}
+  .keyrow input{width:100%;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font-size:13px;outline:none}
+  .keyrow .hint{font-size:11px;color:var(--muted);margin:6px 2px 0}
+  .rolepick{width:100%;margin-top:12px;display:flex;flex-direction:column;gap:5px}
+  .rolepick label{font-size:11px;color:var(--muted)}
+  .rolepick select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font-size:13px;outline:none}
+  .resume-box{width:100%;margin-top:10px;font-size:11.5px;line-height:1.7;color:#9fe3cd;background:rgba(47,191,155,.10);border:1px solid rgba(47,191,155,.28);border-radius:10px;padding:9px 11px}
+  .resume-box b{color:#c6f2e3;font-weight:600}
+  .resume-box .rp{margin-top:5px;color:#8fb9ac;font-size:11px;line-height:1.65}
+  .resume-box .bt{font-size:11.5px;color:#c6f2e3}
+  .resume-box .bsec{margin-top:7px;display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+  .resume-box .bk{font-size:10.5px;color:#6f9a8d;margin-right:2px}
+  .resume-box em{font-style:normal;font-size:10.5px;padding:2px 7px;border-radius:999px;background:rgba(47,191,155,.14);border:1px solid rgba(47,191,155,.26);color:#a8ebd4}
+  .resume-box em.f{background:rgba(79,124,255,.14);border-color:rgba(79,124,255,.3);color:#b9caff}
+  .resume-box .bn{margin-top:8px;padding-top:7px;border-top:1px dashed rgba(47,191,155,.22);font-size:10.5px;color:#7fa89b;line-height:1.6}
+  .resumebtn{width:100%;margin-top:10px;padding:11px 12px;border-radius:12px;cursor:pointer;font-family:inherit;font-size:12.5px;
+    color:#bcd0ff;background:rgba(79,124,255,.14);border:1px solid rgba(79,124,255,.42)}
+  .resumebtn:hover{background:rgba(79,124,255,.22)}
+  .disc{width:100%;margin-top:14px;font-size:11px;line-height:1.55;color:#7d8aa0;text-align:left;border-top:1px solid var(--line);padding-top:10px}
+  .callbtns{display:flex;gap:44px;margin-top:22px}
+  .cbtn{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:none;color:#cfd8e6;font-size:12.5px;cursor:pointer}
+  .cbtn .ic{width:66px;height:66px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .cbtn.answer .ic{background:var(--accent2)}.cbtn.decline .ic{background:var(--danger)}.cbtn:active .ic{transform:scale(.94)}
+  .end{position:absolute;inset:0;background:rgba(8,11,17,.98);display:none;flex-direction:column;align-items:stretch;justify-content:flex-start;padding:22px 18px 24px;text-align:left;z-index:15;overflow-y:auto}
+  .rep{width:100%}.rep h2{font-size:20px;margin:0 0 4px;text-align:center}
+  .total{font-size:46px;font-weight:700;text-align:center;line-height:1;margin-top:10px}
+  .total span{font-size:16px;color:var(--muted);font-weight:400}
+  .grade{text-align:center;color:var(--muted);font-size:12px;margin:7px 0 12px}
+  .sum{font-size:13px;line-height:1.6;color:#cdd7e6;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 12px}
+  .dim{margin:8px 0}.dimtop{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}.dimtop b{color:var(--accent)}
+  .bar{height:7px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .lst{margin-top:12px}.lst h4{font-size:13px;margin:0 0 5px}.lst ul{margin:0;padding-left:18px}.lst li{font-size:12.5px;line-height:1.6;color:#c3cede}
+  .clips{margin-top:16px}.clips h4{font-size:13px;margin:0 0 8px}
+  .rcbox{margin:14px 0;padding:12px 13px;border-radius:12px;border:1px solid rgba(47,191,155,.3);background:rgba(47,191,155,.08)}
+  .rcbox h4{margin:0 0 8px;font-size:13px;color:#9fe3cd}
+  .rcbox .rcnote{margin:0 0 8px;font-size:12px;color:#a9c6bd;line-height:1.7}
+  .rcbox .rcl{margin-top:6px}
+  .rcbox .rcl b{font-size:12px;color:#8fe0c4;font-weight:600}
+  .rcbox .rcl.warn b{color:#ffc888}
+  .rcbox ul{margin:4px 0 0;padding-left:17px;font-size:12px;color:#a9c6bd;line-height:1.8}
+  .gbox{margin:14px 0;padding:11px 13px;border-radius:12px;border:1px solid rgba(255,184,77,.28);background:rgba(255,184,77,.07)}
+  .gbox h4{margin:0 0 6px;font-size:12.5px;color:#ffcf8f}
+  .gbox ul{margin:0;padding-left:17px;font-size:12px;color:#c9b28f;line-height:1.8}
+  .tbox{margin:14px 0;padding:11px 13px;border-radius:12px;border:1px solid rgba(79,124,255,.28);background:rgba(79,124,255,.08)}
+  .tbox h4{margin:0 0 6px;font-size:12.5px;color:#b9caff}
+  .tbox ul{margin:0;padding-left:17px;font-size:12px;color:#a9bcdf;line-height:1.85}
+  .rep-disc{margin:16px 0 0;padding-top:11px;border-top:1px solid var(--line);font-size:11px;color:#6b7788;line-height:1.7}
+  .del-rec{display:none;font-size:11.5px;color:#8d98ab;text-decoration:underline;text-underline-offset:3px;cursor:pointer;margin-left:10px}
+  .del-rec:hover{color:var(--text)}
+  .clip{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:9px;background:rgba(255,255,255,.03)}
+  .cq{font-size:12px;color:var(--accent);margin-bottom:4px}.ca{font-size:12.5px;line-height:1.55;color:#d6dfea}
+  .clip audio{width:100%;margin-top:8px}
+  .end-actions{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+  .end.show{display:flex}.end h2{margin:0 0 6px;font-size:22px}.end p{color:var(--muted);margin:4px 0;font-size:13.5px}
+  .end-stats{display:flex;gap:30px;margin:22px 0}.end-stats div{font-size:13px;color:var(--muted)}.end-stats b{display:block;font-size:28px;color:var(--text);margin-bottom:2px}
+  .btn{margin-top:8px;padding:12px 26px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:14px;cursor:pointer;min-width:170px}
+  .btn.primary{background:var(--accent);border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="statusbar"><span id="clock">--:--</span><span class="brand">AI 模拟面试</span><span id="mode">流式实时</span></div>
+
+  <div class="stage">
+    <div class="micwarn" id="micWarn">当前是<b>预览内嵌页</b>（浏览器不允许内嵌页使用麦克风）。请点 <button class="openbtn" onclick="openInBrowser()">在浏览器打开</button>，或手动复制地址 <b id="micUrl">当前页面地址</b> 到浏览器新标签打开；现在也可先打字或「上传录音」。</div>
+    <div class="avatar-wrap" id="avatarWrap"><div class="avatar">AI</div></div>
+    <div class="role-name">后端开发工程师 · 中级</div>
+    <div class="call-state" id="callState">等待接通</div>
+    <div class="timer" id="timer">00:00</div>
+    <div class="viz" id="viz"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="subtitles" id="subs"></div>
+  </div>
+
+  <div class="talkbar"><div class="vad-dot" id="vadDot"></div><div class="talklbl" id="talkLbl">语音待命 · 直接说话</div></div>
+  <div class="controls">
+    <button class="ctrl" id="btnMute" onclick="toggleMute()"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></span><span>静音</span></button>
+    <button class="ctrl hangup" onclick="hangup()"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 10c5-4 13-4 18 0l-2 3-3-1v-2a12 12 0 0 0-8 0v2l-3 1z"/></svg></span><span>挂断</span></button>
+    <button class="ctrl active" id="btnSub" onclick="toggleSub()"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span><span>字幕</span></button>
+  </div>
+
+  <div class="answer">
+    <div class="lbl">直接说话即可（说完自动发送）；也可打字回车</div>
+    <input id="ansInput" placeholder="例如：我负责订单系统，用 Redis 预扣库存，MQ 削峰……" autocomplete="off" />
+    <label class="upl">上传录音测试<input id="audioFile" type="file" accept="audio/*" hidden /></label>
+  </div>
+
+  <div class="ringing" id="ringing">
+    <div class="avatar">AI</div>
+    <h1>AI 模拟面试官</h1>
+    <p>约 12 分钟 · 语音对话</p>
+    <div class="rolepick"><label>面试岗位</label><select id="roleSel"></select></div>
+    <div class="resume-box" id="resumeBox" style="display:none"></div>
+    <button class="resumebtn" id="btnResume" style="display:none" onclick="resumeCall()"></button>
+    <div class="keyrow">
+      <input id="keyInput" type="password" placeholder="粘贴你的百炼 API Key（sk-…）" autocomplete="off" />
+      <div class="hint" id="keyHint">密钥仅存本机 sessionStorage，逐请求发送，服务端不落地、不缓存。</div>
+    </div>
+    <div class="disc">本平台仅提供API转发代理服务，AI接口调用消耗由用户自行提供的密钥账号承担；用户自行保管密钥，本平台不存储、不负责密钥泄露产生的损失。</div>
+    <div class="callbtns">
+      <button class="cbtn decline" onclick="hangup()"><span class="ic"><svg viewBox="0 0 24 24"><path d="M3 10c5-4 13-4 18 0l-2 3-3-1v-2a12 12 0 0 0-8 0v2l-3 1z"/></svg></span>挂断</button>
+      <button class="cbtn answer" onclick="startCall()"><span class="ic"><svg viewBox="0 0 24 24"><path d="M21 14c-5 4-13 4-18 0l2-3 3 1v2a12 12 0 0 1 8 0v2l3-1z"/></svg></span>接听</button>
+    </div>
+  </div>
+
+  <div class="end" id="endScreen">
+    <div class="rep" id="rep"><h2>面试已结束</h2><p>报告生成中…</p></div>
+    <div class="end-actions">
+      <button class="btn primary" id="btnSave" style="display:none" onclick="onSaveReport()">保存到我的面试记录</button>
+      <button class="btn" onclick="retryReport()">重新生成</button>
+      <button class="btn" onclick="resetCall()">再聊一次</button>
+      <span class="del-rec" id="btnDel" onclick="onDeleteSaved()">从我的记录里删除</span>
+    </div>
+  </div>
+</div>
+
+<!-- 云服务：登录态与面试记录（复用 /site 下已验证的云 SDK 与 Auth 封装） -->
+<script src="/site/assets/js/vendor/workbuddy-cloud-sdk.js"></script>
+<script src="/site/assets/js/config.js"></script>
+<script src="/site/assets/js/storage.js"></script>
+<script src="/site/assets/js/cloud.js"></script>
+<script src="/site/assets/js/auth.js"></script>
+
+<script>
+const $ = id => document.getElementById(id);
+const subs=$('subs'), viz=$('viz'), avatarWrap=$('avatarWrap');
+// API 基址：线上/同源一律用相对路径；只有"本地静态预览（非 8907 端口）"才回退到本机 8907 后端。
+const API_BASE = (function(){
+  const h=location.hostname;
+  const isLocal=(h==='127.0.0.1'||h==='localhost'||h==='[::1]'||h==='::1');
+  const on8907=(location.port==='8907');
+  return (isLocal && !on8907) ? 'http://127.0.0.1:8907' : '';
+})();
+// 密钥只存本机（localStorage），服务端不落地、不缓存；线上 BYOK 版关掉标签后仍记得
+function sget(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function sset(k,v){ try{ if(v)localStorage.setItem(k,v); else localStorage.removeItem(k); }catch(e){} }
+let state='ringing', seconds=0, timerId=null, turns=0, muted=false, subOn=true;
+let history=[], currentAudio=null, busy=false, KEY='', envKeyAllowed=false;
+// 语音状态机 + VAD/打断
+let mode='waiting'; // waiting | recording | processing | ai
+let lastPillAt=0;
+let plan=[], pi=-1, pending='none', roleLabel='';
+let answers=[], clips=[], currentQ='';
+// 简历会话：简历原文不出浏览器，只把摘要/要点登记到服务端换取 sid
+let RESUME=null, SID='';
+// 断点恢复的存档键与待恢复进度（声明提前：offerResume 在初始化阶段就会被调用）
+const PROG_KEY='wb_live_progress', PROG_TTL=30*60*1000;
+let PENDING=null;
+let micStream=null, audioCtx=null, analyser=null, vadTimer=null;
+let recorder=null, chunks=[], recording=false, loudSince=0, lastLoudAt=0, aiStartedAt=0, lastBargeAt=0;
+let aiCb=null;
+// 断句放宽到 1.6s：人会边想边说，0.7s 太急会把"我负责…（想一下）…订单系统"切成两半
+const SPEECH_TH=0.022, BARGE_TH=0.07, ONSET_MS=140, SILENCE_MS=1600, BARGE_GRACE_MS=600;
+// 宽容沉默：AI 问完后用户若一直没开口，5s 轻推一次，12s 再给一条退路（只做提示，不自动换题）
+const NUDGE_MS=5000, SKIP_HINT_MS=12000;
+let silenceTimers=[];
+function clearSilence(){ try{ silenceTimers.forEach(clearTimeout); }catch(e){} silenceTimers=[]; }
+function armSilence(){
+  clearSilence();
+  if(state!=='incall') return;
+  silenceTimers.push(setTimeout(()=>{
+    if(state==='incall'&&mode==='waiting') setPill('不着急，我在听…','idle');
+  },NUDGE_MS));
+  silenceTimers.push(setTimeout(()=>{
+    if(state==='incall'&&mode==='waiting') setPill('想不出来可以说「这块不熟」，也可以直接换一题','idle');
+  },SKIP_HINT_MS));
+}
+const BARGE_ENABLED=false; // 默认关闭打断：避免扬声器回声把自己的语音掐掉（戴耳机可改 true）
+function enterAI(cb){ mode='ai'; aiStartedAt=performance.now(); aiCb=cb||null; setSpeaking(true); setPill('面试官说话中…（可打断）','busy'); }
+function endAI(){ const cb=aiCb; aiCb=null; mode='waiting'; setSpeaking(false); setPill('语音待命 · 直接说话','idle'); if(cb)cb(); }
+function stopAudio(){ if(currentAudio){ try{currentAudio.pause();}catch(e){} currentAudio=null; } }
+function setPill(text,kind){ lastPillAt=Date.now(); const l=document.getElementById('talkLbl'); if(l)l.textContent=text; const d=document.getElementById('vadDot'); if(d)d.className='vad-dot'+(kind?(' '+kind):''); }
+// 状态自愈：把卡死的 processing / 超长 ai 拉回待命
+function recover(reason){ try{ stopAudio(); }catch(e){} busy=false; mode='waiting'; setSpeaking(false); setPill('语音待命 · 直接说话','idle'); try{ $('callState').textContent='你的回合，请说话或打字'; }catch(e){} if(reason){ try{ appendBubble('sys','已恢复',reason); }catch(e){} } }
+setInterval(()=>{ if(state!=='incall') return; const now=Date.now();
+  if(mode==='processing' && lastPillAt && now-lastPillAt>25000) recover('思考超时，已恢复，请再说一次');
+  else if(mode==='ai' && aiStartedAt && (performance.now()-aiStartedAt)>120000) recover('语音播放异常，已恢复');
+}, 3000);
+
+const OPENING='你好，我是今天的面试官。我们做一个十二分钟左右的模拟面试，放松一点，就当真实通话。先做个自我介绍吧，用一两分钟，说说你最拿得出手的一个项目。';
+// 任何脚本错误都显示在界面上，避免"点了没反应"
+window.addEventListener('error',e=>{ try{ appendBubble('sys','脚本错误', String(e.message||e.error||'')); }catch(_){}});
+window.addEventListener('unhandledrejection',e=>{ try{ appendBubble('sys','异步错误', String((e.reason&&e.reason.message)||e.reason)); }catch(_){}});
+// 处于内嵌 iframe（如预览 srcdoc）时，浏览器禁止麦克风 —— 主动提示并提供开新窗口
+if(window.top!==window.self){ setTimeout(()=>{ try{ showMicBanner(); setPill('预览内嵌页 · 麦克风不可用','off'); }catch(_){} }, 0); }
+function openInBrowser(){
+  const url=location.origin+location.pathname+location.search;  // 含 sharecode，线上可直接打开
+  let opened=false;
+  try{ const w=window.open(url,'_blank'); opened=!!w; }catch(e){}
+  try{ if(navigator.clipboard) navigator.clipboard.writeText(url); }catch(e){}
+  try{ appendBubble('sys','提示',(opened?'已尝试在新窗口打开':'未能自动打开，已复制链接')+'：请把 '+url+' 放到 Chrome/Edge 地址栏打开（内嵌预览无法用麦克风）。'); }catch(_){}
+}
+
+function tickClock(){const d=new Date();$('clock').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+setInterval(tickClock,1000);tickClock();
+
+function appendBubble(who,tag,text){const b=document.createElement('div');b.className='bubble '+who;b.innerHTML=`<span class="tag">${tag}</span>${text}`;subs.appendChild(b);subs.scrollTop=subs.scrollHeight;return b;}
+function addStreamBubble(tag){const b=appendBubble('ai',tag,'');const t=document.createElement('span');t.className='stxt';b.appendChild(t);return t;}
+function setSpeaking(on){viz.classList.toggle('speaking',on);avatarWrap.classList.toggle('speaking',on);}
+
+// 平台网关要求分享链接携带 sharecode；页面内所有子请求自动附加，否则线上会被网关 403
+const SHARECODE = (new URLSearchParams(location.search).get('sharecode') || '').trim();
+function withSC(u){ if(!SHARECODE) return u; return u + (u.indexOf('?') >= 0 ? '&' : '?') + 'sharecode=' + encodeURIComponent(SHARECODE); }
+
+// 逐请求带用户密钥（服务端不存储）
+function api(p,opts){const h=Object.assign({'Content-Type':'application/json'},(opts&&opts.headers)||{});if(KEY)h['X-User-Key']=KEY;return fetch(withSC(API_BASE+p),Object.assign({},opts,{headers:h}));}
+function errMsg(j,st){ if(j&&j.error==='rate_limited')return '请求过于频繁（限流），稍后再试'; if(j&&j.error==='missing_key')return '缺少密钥，请在来电页填入自己的 API Key'; if(j&&j.error==='invalid_key')return '你的 API Key 无效（上游 401）：请检查是否复制完整、是否属于正确的业务空间'; if(j&&j.error==='session_quota'){ const k=j.kind==='llm'?'追问':(j.kind==='asr'?'语音识别':'评分'); return '这一场已达上限（单次最多 '+j.max+' 次'+k+'），挂断后重新开一场即可'; } let s=(j&&j.error)||('HTTP '+st); if(j&&j.status)s+='('+j.status+')'; if(j&&j.detail){ const d=typeof j.detail==='string'?j.detail:JSON.stringify(j.detail); s+=' '+d.slice(0,80); } return s; }
+
+// 带超时的请求 + 友好错误
+async function apiFetch(p,opts,ms){ const ac=new AbortController(); const t=setTimeout(()=>ac.abort(), ms||60000);
+  try{ return await api(p,Object.assign({},opts,{signal:ac.signal})); }
+  catch(e){ if(e&&e.name==='AbortError'){ const x=new Error('请求超时，请重试'); x.name='TimeoutError'; throw x; } throw e; }
+  finally{ clearTimeout(t); } }
+function friendlyError(e){ if(!e)return '未知错误'; if(e.name==='TimeoutError'||e.name==='AbortError')return '请求超时，请重试'; if(e.name==='TypeError')return '连不上后端（网络或服务未启动）'; return e.message||String(e); }
+// 服务端检测到你自带的 Key 无效并回退演示 Key 时，清掉坏 Key 并提示一次
+function checkKeyFallback(r){ try{ if(r&&r.headers&&r.headers.get&&r.headers.get('X-Key-Fallback')==='1'){ KEY=''; sset('dsk',''); try{ const ki=$('keyInput'); if(ki)ki.value=''; }catch(e){} appendBubble('sys','密钥','你填的 Key 无效，已临时改用服务端演示密钥（仅本地）。'); } }catch(e){} }
+window.addEventListener('offline',()=>{ try{ appendBubble('sys','网络','网络已断开，恢复后请重试'); }catch(_){}});
+window.addEventListener('online',()=>{ try{ appendBubble('sys','网络','网络已恢复'); }catch(_){}});
+
+// 启动时读取服务端健康信息
+let healthDone=false, healthP=null;
+healthP=fetch(withSC(API_BASE+'/health')).then(r=>r.json()).then(h=>{
+  envKeyAllowed=!!h.allowEnvKey; healthDone=true;
+  if(envKeyAllowed){
+    $('keyInput').placeholder='可选：不填则用服务端演示密钥';
+    $('keyHint').textContent='服务端已配置演示密钥；也可填自己的 Key（逐请求发送、不落地）。';
+  }else{
+    $('keyInput').placeholder='粘贴你的百炼 API Key（sk-…）';
+    $('keyHint').textContent='线上为 BYOK 版：模型调用消耗由你的密钥账号承担。密钥只保存在本机浏览器，逐请求发送，服务端不存储、不缓存。';
+    if(sget('dsk')){ try{ $('keyInput').value=sget('dsk'); }catch(e){} }
+  }
+  setPill('语音待命 · 直接说话','idle');
+}).catch(()=>{
+  envKeyAllowed=false; healthDone=true;
+  appendBubble('sys','未连上后端','没连到后端（/health 失败）。若在本地，请用 http://127.0.0.1:8907 打开；若在预览面板内，请用浏览器打开该地址。');
+  setPill('未连上后端','off');
+});
+RESUME=readResumeCtx(); offerResume();
+loadRoles().then(()=>prepareBrief());
+
+// ---- LLM 流式：逐 token 渲染 ----
+async function streamLLM(messages,tag){
+  const txtEl=addStreamBubble(tag); let full='';
+  const r=await apiFetch('/api/voice/llm',{method:'POST',body:JSON.stringify({messages,sid:SID})},30000);
+  checkKeyFallback(r);
+  if(!r.ok){ const j=await r.json().catch(()=>({})); txtEl.textContent=''; throw new Error(errMsg(j,r.status)); }
+  const rd=r.body.getReader(),dec=new TextDecoder(); let buf='';
+  while(true){ const {value,done}=await rd.read(); if(done)break; buf+=dec.decode(value,{stream:true});
+    let i; while((i=buf.indexOf('\n'))>=0){ const line=buf.slice(0,i).trim(); buf=buf.slice(i+1);
+      if(!line.startsWith('data:'))continue; const d=line.slice(5).trim(); if(!d||d==='[DONE]')continue;
+      try{const j=JSON.parse(d);const t=(j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content)||'';if(t){full+=t;txtEl.textContent=full;subs.scrollTop=subs.scrollHeight;}}catch(e){}
+    }}
+  if(!full.trim()) throw new Error('模型未返回内容');
+  return full;
+}
+
+// ---- TTS 流式：MSE 边收边播；不支持则回退整段 blob ----
+async function fetchTTSBytesOnce(text){
+  const r=await apiFetch('/api/voice/tts',{method:'POST',body:JSON.stringify({text})},45000);
+  checkKeyFallback(r);
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(errMsg(j,r.status));}
+  const all=await r.text(); const parts=[];
+  for(const line of all.split('\n')){const t=line.trim();if(!t.startsWith('data:'))continue;const d=t.slice(5).trim();if(!d)continue;
+    try{const j=JSON.parse(d);const b64=j.output&&j.output.audio&&j.output.audio.data;if(b64)parts.push(Uint8Array.from(atob(b64),c=>c.charCodeAt(0)));}catch(e){}}
+  if(!parts.length) throw new Error('tts 无音频');
+  let total=0;for(const p of parts)total+=p.length;const out=new Uint8Array(total);let off=0;for(const p of parts){out.set(p,off);off+=p.length;}return out;
+}
+async function fetchTTSBytes(text){
+  let last;
+  for(let i=0;i<2;i++){ try{ return await fetchTTSBytesOnce(text); }catch(e){ last=e; await new Promise(r=>setTimeout(r,300)); } }
+  throw last;
+}
+async function speakBlob(text,cb){
+  stopAudio();
+  let bytes;
+  try{ bytes=await fetchTTSBytes(text); }
+  catch(e){ appendBubble('sys','语音','合成失败：'+friendlyError(e)); if(cb)cb(); return; }
+  const blob=new Blob([bytes],{type:'audio/mpeg'}); const url=URL.createObjectURL(blob);
+  const a=new Audio(url); a.preload='auto'; a.volume=1; a.muted=false;
+  try{ a.style.display='none'; if(document.body&&document.body.appendChild) document.body.appendChild(a); }catch(e){}
+  currentAudio=a; enterAI(cb); $('callState').textContent='对方正在说话…';
+  const cleanup=()=>{ try{ if(a.remove)a.remove(); }catch(e){} URL.revokeObjectURL(url); };
+  a.onended=()=>{ cleanup(); if(mode==='ai')endAI(); };
+  a.onerror=()=>{ cleanup(); if(mode==='ai'){ appendBubble('sys','语音','播放出错，已跳过这段语音'); endAI(); } };
+  try{ await a.play(); }
+  catch(e){
+    appendBubble('sys','需要点击','浏览器拦了自动播放——点一下页面任意处，我会立刻补播。');
+    const retry=()=>{ try{ document.removeEventListener('click',retry); }catch(_){} a.play().catch(()=>{}); };
+    document.addEventListener('click',retry);
+  }
+}
+// 统一走整段播放（更可靠）；保留函数名兼容调用
+async function speakStream(text,cb){ return speakBlob(text,cb); }
+
+// 读取岗位列表填充下拉
+// ---- 简历上下文 ----
+// 从简历页跳来时（?resume=1），简历在 sessionStorage 的 wb_resume（同源同标签页共享）。
+// 这里只读取摘要与要点；简历原文不上传服务端。
+function readResumeCtx(){
+  const qs=new URLSearchParams(location.search);
+  if(qs.get('resume')!=='1') return null;
+  let r=null;
+  try{ r=JSON.parse(sessionStorage.getItem('wb_resume')||'null'); }catch(e){ r=null; }
+  if(!r||!r.match) return null;
+  const urlRole=qs.get('role')||'';
+  // 串岗校验：简历绑定的岗位必须与本次一致，否则丢弃，避免拿 A 岗位简历面试 B 岗位
+  if(urlRole && r.role && r.role!==urlRole){ try{ sessionStorage.removeItem('wb_resume'); }catch(e){} return null; }
+  return r;
+}
+let BRIEF=null;
+// 隐私：报告生成成功后立即注销服务端会话（服务端内存立刻释放，对应"可立即删"的承诺）。
+// 失败时保留 sid，便于点「重新生成」时仍能拿到简历上下文。
+function releaseSession(){
+  if(!SID) return;
+  const s=SID; SID='';
+  try{
+    const p=apiFetch('/api/voice/session/'+encodeURIComponent(s),{method:'DELETE'},15000);
+    if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+async function ensureSession(role){
+  if(SID) return SID;
+  try{
+    const body={role, industry:(RESUME&&RESUME.industry)||'', level:(RESUME&&RESUME.level)||'中级', tier:(RESUME&&RESUME.tier)||''};
+    if(RESUME){
+      const m=RESUME.match||{};
+      body.matched=!!m.pass; body.resumeScore=m.score||0; body.verdict=m.verdict||'';
+      body.probes=m.probe_points||[]; body.hits=m.hits||[]; body.gaps=m.gaps||[];
+    }
+    const r=await apiFetch('/api/voice/session',{method:'POST',body:JSON.stringify(body)},15000);
+    if(!r.ok) return '';
+    const j=await r.json().catch(()=>({})); SID=j.sid||''; BRIEF=j.brief||null; return SID;
+  }catch(e){ return ''; }
+}
+// 面试官简报：接听前就告诉用户"会重点看什么、会深挖哪几处"
+function renderBrief(){
+  const box=$('resumeBox'); if(!box) return;
+  const must=(BRIEF&&BRIEF.must)||[], focus=(BRIEF&&BRIEF.focus)||[], cps=(BRIEF&&BRIEF.checkpoints)||[];
+  const m=RESUME&&RESUME.match;
+  if(!must.length && !cps.length && !m){ box.style.display='none'; return; }
+  const parts=[];
+  if(m) parts.push('<b>已读取你的简历</b> · 匹配 '+(m.score!=null?m.score:'-')+' 分');
+  else parts.push('<b>面试官简报</b>');
+  let html='<div class="bt">'+parts.join('')+'</div>';
+  if(must.length){
+    html+='<div class="bsec"><span class="bk">会重点看</span>'+must.slice(0,4).map(x=>'<em>'+String(x)+'</em>').join('')+'</div>';
+  }
+  if(focus.length){
+    const lv=(RESUME&&RESUME.level)||'中级';
+    html+='<div class="bsec"><span class="bk">'+lv+'侧重</span>'+focus.slice(0,3).map(x=>'<em class="f">'+String(x)+'</em>').join('')+'</div>';
+  }
+  if(cps.length){
+    html+='<div class="bsec"><span class="bk">会深挖</span>'+cps.slice(0,3).map(x=>'<em>'+String(x).slice(0,22)+'</em>').join('')+'</div>';
+  }
+  html+='<div class="bn">答不上来就说"这块我不熟"，比硬编更稳；面试官会顺着你的回答继续问。</div>';
+  box.innerHTML=html; box.style.display='block';
+}
+async function prepareBrief(){
+  const sel=$('roleSel'); const role=(sel&&sel.value)||'';
+  if(!role) return;
+  SID=''; BRIEF=null;
+  await ensureSession(role);
+  renderBrief();
+}
+
+async function loadRoles(){
+  try{
+    const r=await fetch(withSC(API_BASE+'/api/voice/roles')); const j=await r.json();
+    const sel=$('roleSel'); if(!sel) return;
+    const list=(j.roles||[]);
+    sel.innerHTML=list.map(x=>`<option value="${x.role}">${x.industry?x.industry+' · ':''}${x.role}（${x.count}）</option>`).join('');
+    const pref=[...sel.options].find(o=>o.value==='后端开发工程师'); if(pref) sel.value='后端开发工程师';
+    // 有简历时锁定岗位：简历已绑定目标岗位，中途换岗会让深挖点失效
+    if(RESUME && RESUME.role){
+      const opt=[...sel.options].find(o=>o.value===RESUME.role);
+      if(opt){ sel.value=RESUME.role; sel.disabled=true; sel.title='本次面试已绑定简历的目标岗位'; }
+    }
+    // 换岗位后重建会话，简报跟着更新
+    if(!sel._briefBound){ sel._briefBound=true; sel.addEventListener('change',()=>{ prepareBrief(); }); }
+  }catch(e){ /* 后端不可达时保持空 */ }
+}
+// 按岗位拉题目（有 sid 时服务端走"简历优先"骨架）
+async function fetchPlan(role){
+  plan=[];
+  try{ const qs='/api/voice/questions?role='+encodeURIComponent(role)+'&limit=6'+(SID?('&sid='+encodeURIComponent(SID)):''); const r=await apiFetch(qs,{},15000); const j=await r.json(); plan=Array.isArray(j.questions)?j.questions:[]; }catch(e){ plan=[]; }
+  if(!plan.length) plan=[
+    {type:'自我介绍',spoken_prompt:OPENING},
+    {type:'项目经历',spoken_prompt:'挑一个你最拿得出手的项目，具体讲讲你负责什么、最大的难点是什么、怎么解决的。'},
+    {type:'场景题',spoken_prompt:'如果线上接口突然大面积超时，你会按什么步骤排查？'},
+    {type:'行为面试',spoken_prompt:'讲一次你和同事产生分歧的经历，你当时怎么处理，最后结果如何。'},
+    {type:'压力题',spoken_prompt:'如果老板就在旁边盯着，要求半小时内必须恢复，你会怎么取舍？'}];
+}
+async function beginInterview(){
+  const sel=$('roleSel'); const role=(sel&&sel.value)||'后端开发工程师'; roleLabel=role;
+  try{ const rn=document.querySelector('.role-name'); if(rn) rn.textContent=role+' · '+((RESUME&&RESUME.level)||'中级'); }catch(e){}
+  pi=-1; pending='none';
+  await ensureSession(role);          // 登记简历摘要与要点（不含原文），拿到 sid
+  await fetchPlan(role);
+  const withResume = !!(RESUME && RESUME.match);
+  const open = withResume
+    ? '你好，我是今天的面试官。你的简历我看过了，今天面的是'+role+'，大概十二分钟，我们就按简历上的经历聊，放松一点。'
+    : '你好，我是今天的面试官。今天面的是'+role+'，大概十二分钟，放松一点，就当真实通话，我们开始。';
+  history.push({role:'assistant',content:open}); appendBubble('ai','面试官',open);
+  await speakStream(open,()=>{}); await nextQuestion();
+}
+// ---- 断点恢复：进度存本机（不含简历原文），刷新/切后台后可接着面 ----
+function saveProgress(){
+  try{
+    if(state!=='incall'||!plan.length) return;
+    sessionStorage.setItem(PROG_KEY, JSON.stringify({
+      sid:SID, role:roleLabel, plan, pi, next:pi+1, answers, history,
+      seconds, turns, at:Date.now()
+    }));
+  }catch(e){}
+}
+function loadProgress(){
+  try{
+    const p=JSON.parse(sessionStorage.getItem(PROG_KEY)||'null');
+    if(!p||!Array.isArray(p.plan)||!p.plan.length||!p.sid) return null;
+    if(Date.now()-(p.at||0)>PROG_TTL){ sessionStorage.removeItem(PROG_KEY); return null; }
+    return p;
+  }catch(e){ return null; }
+}
+function clearProgress(){ try{ sessionStorage.removeItem(PROG_KEY); }catch(e){} }
+function offerResume(){
+  PENDING=loadProgress();
+  const btn=$('btnResume'); if(!btn) return;
+  if(!PENDING){ btn.style.display='none'; return; }
+  const left=Math.max(0,PENDING.plan.length-(PENDING.next||0));
+  btn.textContent='继续上次面试（还剩 '+left+' 题 · '+PENDING.role+'）';
+  btn.style.display='block';
+}
+async function resumeCall(){
+  if(!PENDING) return;
+  const p=PENDING;
+  if(!(SID=p.sid)){ appendBubble('sys','无法恢复','上次的面试会话已过期，请重新开始。'); clearProgress(); return; }
+  roleLabel=p.role||roleLabel; plan=p.plan||[]; pi=Math.max(-1,(typeof p.next==='number'?p.next:1)-1);
+  answers=p.answers||[]; history=p.history||[]; seconds=p.seconds||0; turns=p.turns||0;
+  KEY=($('keyInput').value||'').trim()||sget('dsk')||'';
+  if(KEY) sset('dsk',KEY);
+  if(!KEY&&!envKeyAllowed){ appendBubble('sys','提示','请先填入 API Key 再继续上次面试。'); return; }
+  $('ringing').classList.add('hide'); state='incall'; mode='waiting'; $('callState').textContent='已恢复';
+  const m=String(Math.floor(seconds/60)).padStart(2,'0'), s2=String(seconds%60).padStart(2,'0');
+  $('timer').textContent=m+':'+s2;
+  startTimer(); unlockAudio(); startListening();
+  appendBubble('sys','已恢复','从上次中断处继续，还剩 '+Math.max(0,plan.length-(p.next||0))+' 题。');
+  await nextQuestion();
+}
+
+async function nextQuestion(){
+  pi++;
+  if(pi>=plan.length){ const close='今天的面试就到这里，辛苦了。稍后你可以复盘一下自己的表达。'; history.push({role:'assistant',content:close}); appendBubble('ai','收尾',close); await speakStream(close,()=>{}); setTimeout(()=>{ try{ hangup(); }catch(e){} },1200); return; }
+  const q=plan[pi]; pending='question'; currentQ=q.spoken_prompt||'';
+  history.push({role:'assistant',content:q.spoken_prompt});
+  appendBubble('ai',(q.type||'问题'),q.spoken_prompt);
+  await speakStream(q.spoken_prompt,()=>{}); saveProgress(); armSilence();
+}
+
+async function submitAnswer(text){
+  if(state!=='incall'||!text.trim())return;
+  if(!busy && mode==='ai'){ stopAudio(); endAI(); }   // 开场/播报中用户直接作答：接管，避免两个 TTS 撞车
+  if(busy) return;
+  busy=true;
+  mode='processing'; setPill('对方思考中…','busy');
+  appendBubble('me','你',text); history.push({role:'user',content:text});
+  answers.push({ q: currentQ || '', a: text });
+  $('callState').textContent='对方正在思考…';
+  try{
+    if(pending==='followup'){ pending='none'; busy=false; await nextQuestion(); return; }
+    const reply=await streamLLM(history,'追问');
+    history.push({role:'assistant',content:reply}); pending='followup'; turns++;
+    await speakStream(reply,()=>{});
+  }catch(e){
+    appendBubble('sys','追问失败', friendlyError(e));
+  }finally{
+    busy=false;
+    if(mode==='processing'){ mode='waiting'; setPill('语音待命 · 直接说话','idle'); }
+    $('callState').textContent = (mode==='ai') ? '对方正在说话…' : '你的回合，请说话或打字';
+    saveProgress(); armSilence();
+  }
+}
+
+async function startCall(){
+  if(state!=='ringing')return;
+  try{
+    if(!healthDone && healthP){ try{ await healthP; }catch(e){} }
+    KEY=($('keyInput').value||'').trim()||sget('dsk')||'';
+    if(KEY)sset('dsk',KEY);
+    if(!KEY&&!envKeyAllowed){ appendBubble('sys','提示','请先在来电页填入你自己的百炼 API Key（sk- 开头）。密钥只存本机浏览器，逐请求发送，服务端不存储。'); try{ $('keyInput').focus(); }catch(e){} return; }
+    $('ringing').classList.add('hide'); state='incall'; $('callState').textContent='已接通'; mode='waiting'; startTimer();
+    unlockAudio();      // 用户手势内解锁音频
+    startListening();   // 常开麦克风 + VAD
+    beginInterview();
+  }catch(e){ appendBubble('sys','启动失败', String(e&&e.message||e)); }
+}
+function startTimer(){timerId=setInterval(()=>{seconds++;const m=String(Math.floor(seconds/60)).padStart(2,'0'),s=String(seconds%60).padStart(2,'0');$('timer').textContent=`${m}:${s}`;},1000);}
+function toggleMute(){muted=!muted;const b=$('btnMute');b.classList.toggle('active',muted);b.querySelector('span:last-child').textContent=muted?'语音暂停':'静音'; setPill(muted?'语音暂停 · 打字继续':'语音待命 · 直接说话', muted?'off':'idle');}
+function toggleSub(){subOn=!subOn;$('btnSub').classList.toggle('active',subOn);subs.classList.toggle('hidden',!subOn);}
+function hangup(){ if(state==='ended')return; state='ended';mode='waiting';setSpeaking(false);stopAudio();clearInterval(timerId);stopListening();clearSilence();
+  // 隐私：挂断即清浏览器里的简历原文；服务端只留摘要与要点，30 分钟自动过期
+  try{ sessionStorage.removeItem('wb_resume'); }catch(e){}
+  clearProgress();
+  $('callState').textContent='已结束'; $('endScreen').classList.add('show'); setPill('通话已结束','off'); generateReport(); }
+function resetCall(){ state='ringing';seconds=0;turns=0;history=[];busy=false;mode='waiting'; answers=[]; currentQ=''; pi=-1; pending='none';
+  clearProgress(); releaseSession(); offerResume();
+  try{ clips.forEach(c=>{try{URL.revokeObjectURL(c.url);}catch(e){}}); }catch(e){} clips=[];
+  const rep=$('rep'); if(rep) rep.innerHTML='<h2>面试已结束</h2><p>报告生成中…</p>';
+  $('timer').textContent='00:00';$('endScreen').classList.remove('show');$('ringing').classList.remove('hide');subs.innerHTML=''; setPill('语音待命 · 直接说话','idle'); }
+
+// ---- 七维报告 ----
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function gradeOf(t){ return t>=4?'优秀':t>=3.5?'良好':t>=3?'达标':'待提升'; }
+function durText(){ const m=String(Math.floor(seconds/60)).padStart(2,'0'), s=String(seconds%60).padStart(2,'0'); return m+':'+s; }
+async function generateReport(){
+  const rep=$('rep'); if(!rep) return;
+  if(!answers.length){ rep.innerHTML='<h2>面试已结束</h2><p>本次没有可评分的作答。</p>'; return; }
+  rep.innerHTML='<h2>面试已结束</h2><p><span id="repWait">正在给七个维度打分…</span></p><p style="font-size:11.5px;color:#7d8aa0">评分与简历核对一起做，大约 10–15 秒</p>';
+  startWaitHint();
+  try{
+    const r=await apiFetch('/api/voice/score',{method:'POST',body:JSON.stringify({role:roleLabel,answers,sid:SID})},60000);
+    checkKeyFallback(r);
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.dimensions) throw new Error(errMsg(j,r.status));
+    renderReport(j);
+  }catch(e){ stopWaitHint(); rep.innerHTML='<h2>面试已结束</h2><p>报告生成失败：'+esc(friendlyError(e))+'</p><p style="font-size:12px;color:#93a0b4">可点下方「重新生成」。</p>'; }
+}
+function retryReport(){ try{ $('endScreen').classList.add('show'); }catch(e){} generateReport(); }
+
+// 等待期的渐进反馈（零成本：不额外调用模型，只让 UI 说清在做什么）
+const WAIT_MSGS=['正在给七个维度打分…','正在核对你的简历要点…','正在对比岗位要求…','在整理简历改写建议…','马上就好…'];
+let waitTimer=null, waitStep=0;
+function startWaitHint(){
+  waitStep=0; try{ clearInterval(waitTimer); }catch(e){}
+  waitTimer=setInterval(()=>{
+    waitStep++;
+    const el=$('repWait');
+    if(el) el.textContent=WAIT_MSGS[Math.min(waitStep, WAIT_MSGS.length-1)];
+  },3500);
+}
+function stopWaitHint(){ try{ clearInterval(waitTimer); }catch(e){} waitTimer=null; }
+
+// ---- 保存到我的面试记录（默认不落库；登录后由用户主动点击才写入）----
+let LAST_SCORE=null, SAVED=false, SAVED_ID=null;
+// 删除已保存的记录（走 reports 表的 RLS：只能删自己的）
+async function onDeleteSaved(){
+  const l=$('btnDel'); if(!SAVED_ID) return;
+  if(!confirm('确定从你的面试记录里删除这一条？删除后无法恢复。')) return;   // 防误删
+  try{ if(l) l.textContent='删除中…'; }catch(e){}
+  try{
+    await Auth.api('/reports/'+SAVED_ID,{method:'DELETE'});
+    SAVED=false; SAVED_ID=null;
+    const b=$('btnSave'); if(b){ b.disabled=false; b.dataset.mode='save'; b.textContent='保存到我的面试记录'; }
+    if(l){ l.textContent='从我的记录里删除'; l.style.display='none'; }
+    try{ appendBubble('sys','已删除','这条记录已从你的账号移除。'); }catch(e){}
+  }catch(e){
+    if(l) l.textContent='删除失败，点击重试';
+    try{ appendBubble('sys','删除失败', friendlyError(e)); }catch(_){}
+  }
+}
+async function initSaveBtn(){
+  const btn=$('btnSave'); if(!btn) return;
+  if(SAVED){ btn.style.display='inline-block'; btn.disabled=true; btn.textContent='已保存到我的记录'; return; }
+  if(!window.Auth||!window.Cloud){ btn.style.display='none'; return; }
+  try{ await Auth.ready(); }catch(e){}
+  let logged=false; try{ logged=Auth.isLoggedIn(); }catch(e){}
+  btn.disabled=false;
+  btn.dataset.mode=logged?'save':'login';
+  btn.textContent=logged?'保存到我的面试记录':'登录后保存这次记录';
+  btn.style.display='inline-block';
+}
+async function onSaveReport(){
+  const btn=$('btnSave'); if(!btn) return;
+  if(btn.dataset.mode==='login'){ location.href='/site/history.html'; return; }
+  if(!LAST_SCORE) return;
+  btn.disabled=true; btn.textContent='保存中…';
+  try{
+    const d=LAST_SCORE;
+    // 投递记录要包含"简历 × 岗位"的匹配结论（方案 S5：岗位 / 匹配分 / 通话时长 / 报告摘要）
+    const rm=(RESUME&&RESUME.match)||null;
+    const rep={
+      role:roleLabel, level:(RESUME&&RESUME.level)||'中级', tier:(RESUME&&RESUME.tier)||'', tierName:'',
+      totalScore:Number(d.total)||0, stanine:null,
+      verdict:{label:gradeOf(Number(d.total)||0), cls:''},
+      timeSeconds:seconds,
+      resumeScore:(rm&&rm.score!=null)?rm.score:null,        // 简历与岗位的匹配分
+      resumeVerdict:(rm&&rm.verdict)||'',                    // 匹配的结论句
+      resumeMatched:rm?!!rm.pass:null,
+      dimensions:d.dimensions, summary:d.summary, strengths:d.strengths, improvements:d.improvements,
+      resumeCheck:d.resumeCheck||null, roleGaps:d.roleGaps||[], resumeTips:d.resumeTips||[],
+      answers:(answers||[]).map(a=>({q:a.q,a:a.a})),
+      src:'voice'
+    };
+    const res=await Auth.api('/reports',{method:'POST',body:JSON.stringify({report:rep})});
+    SAVED=true; SAVED_ID=(res&&res.id)||null; btn.textContent='已保存到我的记录';
+    const dl=$('btnDel'); if(dl&&SAVED_ID){ dl.style.display='inline-block'; dl.textContent='从我的记录里删除'; }
+    try{ appendBubble('sys','已保存','这次记录已存到你的账号，可在「历史记录」里查看。'); }catch(e){}
+  }catch(e){
+    btn.disabled=false; btn.textContent='保存失败，点此重试';
+    try{ appendBubble('sys','保存失败', friendlyError(e)); }catch(_){}
+  }
+}
+function renderReport(d){
+  const dims=(d.dimensions||[]).map(x=>`<div class="dim"><div class="dimtop"><span>${esc(x.name)}</span><b>${Number(x.score).toFixed(1)}</b></div><div class="bar"><i style="width:${Math.max(0,Math.min(100,Number(x.score)/5*100))}%"></i></div>${x.evidence?`<div style="font-size:11px;color:#7d8aa0;margin-top:3px">${esc(x.evidence)}</div>`:''}</div>`).join('');
+  const li=(arr,t)=>arr&&arr.length?`<div class="lst"><h4>${t}</h4><ul>${arr.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
+  const clipHtml=(answers||[]).map((a,i)=>{ const c=clips.find(x=>x.at===i); return `<div class="clip"><div class="cq">Q${i+1}：${esc(a.q)}</div><div class="ca">${esc(a.a)}</div>${c?`<audio controls preload="metadata" src="${c.url}"></audio>`:''}</div>`;}).join('');
+  // 简历兑现情况：简历里提到的点，现场有没有讲出可验证的细节
+  const rc=d.resumeCheck||null;
+  const rcHtml=(rc&&(rc.verified?.length||rc.unverified?.length||rc.note))?
+    `<div class="rcbox">
+      <h4>简历与现场表现的一致性</h4>
+      ${rc.note?`<p class="rcnote">${esc(rc.note)}</p>`:''}
+      ${rc.verified&&rc.verified.length?`<div class="rcl"><b>讲到位了</b><ul>${rc.verified.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+      ${rc.unverified&&rc.unverified.length?`<div class="rcl warn"><b>简历写了但没讲透</b><ul>${rc.unverified.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+    </div>`:'';
+  // 岗位要求核对：这个岗位看重、但这场没体现的方面
+  const rg=(d.roleGaps||[]).filter(Boolean);
+  const rgHtml=rg.length?`<div class="gbox"><h4>这个岗位看重、这场没体现的</h4><ul>${rg.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
+  // 简历改写建议：把"练面试"延伸成"改简历"
+  const tips=(d.resumeTips||[]).filter(Boolean);
+  const tipsHtml=tips.length?`<div class="tbox"><h4>简历可以这样改</h4><ul>${tips.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'';
+  $('rep').innerHTML=`<h2>面试报告</h2>
+    <div class="total">${Number(d.total||0).toFixed(1)}<span>/5</span></div>
+    <div class="grade">${gradeOf(Number(d.total||0))} · 用时 ${durText()} · 追问 ${turns} 轮</div>
+    <p class="sum">${esc(d.summary||'')}</p>
+    ${rcHtml}${rgHtml}${tipsHtml}
+    <div class="dims">${dims}</div>
+    ${li(d.strengths,'亮点')}${li(d.improvements,'可提升')}
+    <div class="clips"><h4>关键片段回放</h4>${clipHtml||'<p style="font-size:12px;color:#93a0b4">本次为文字作答，无音频片段。</p>'}</div>
+    <p class="rep-disc">这是面试练习。评分由 AI 依据你这一场的作答给出，仅供参考，不构成任何录用结论。</p>`;
+  LAST_SCORE=d; stopWaitHint(); initSaveBtn(); releaseSession();
+}
+
+// ---- 语音：常开麦克风 + VAD 自动断句 + 打断（barge-in）----
+function showMicBanner(){
+  const w=$('micWarn'); if(w) w.classList.add('show');
+  const u=$('micUrl'); if(u) u.textContent=location.origin+location.pathname;
+}
+// 在用户手势（接听点击）里播一个静音片段，解锁浏览器自动播放
+let _audioUnlocked=false;
+function unlockAudio(){
+  if(_audioUnlocked) return; _audioUnlocked=true;
+  try{ const AC=window.AudioContext||window.webkitAudioContext; if(AC){ window._ac=window._ac||new AC(); if(window._ac.resume) window._ac.resume(); } }catch(e){}
+  try{ const a=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA='); a.volume=0; a.play().catch(()=>{}); }catch(e){}
+}
+async function startListening(){
+  if(micStream) return;
+  try{ micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
+  catch(e){
+    const nm=(e&&e.name)||'Error';
+    let hint=nm;
+    if(nm==='NotAllowedError'||nm==='PermissionDeniedError') hint='麦克风权限被拒绝：点地址栏左侧图标允许麦克风';
+    else if(nm==='NotFoundError'||nm==='DevicesNotFoundError') hint='没有检测到麦克风设备';
+    else if(nm==='NotReadableError'||nm==='TrackStartError') hint='麦克风被其他程序占用';
+    else if(nm==='SecurityError') hint='当前环境禁止麦克风（需顶层浏览器 + http://127.0.0.1 或 https）';
+    const diag='URL='+location.href+'｜安全上下文='+(window.isSecureContext?'是':'否')+'｜内嵌iframe='+(window.top!==window.self?'是':'否');
+    appendBubble('sys','麦克风不可用', hint+'。'+diag);
+    showMicBanner(); setPill('麦克风不可用 · 请用浏览器打开本页','off'); return;
+  }
+  try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); await audioCtx.resume().catch(()=>{}); }catch(e){}
+  if(audioCtx){ const src=audioCtx.createMediaStreamSource(micStream); analyser=audioCtx.createAnalyser(); analyser.fftSize=1024; src.connect(analyser); }
+  try{ micStream.getAudioTracks().forEach(t=>{ if(t.addEventListener) t.addEventListener('ended',()=>{ try{ appendBubble('sys','麦克风','麦克风设备已断开'); }catch(_){} }); }); }catch(e){}
+  vadTimer=setInterval(vadTick,60);
+  setPill('语音待命 · 直接说话','idle');
+}
+function stopListening(){
+  if(vadTimer){clearInterval(vadTimer);vadTimer=null;}
+  try{ if(recorder&&recording){recording=false;recorder.stop();} }catch(e){}
+  if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
+  if(audioCtx){ try{audioCtx.close();}catch(e){} audioCtx=null; }
+  analyser=null;
+}
+function rms(){
+  if(!analyser) return 0;
+  const buf=new Uint8Array(analyser.fftSize); analyser.getByteTimeDomainData(buf);
+  let s=0; for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128; s+=v*v;}
+  return Math.sqrt(s/buf.length);
+}
+function vadTick(){
+  if(state!=='incall'||muted) return;
+  const now=performance.now(), r=rms();
+  const th=(mode==='ai')?BARGE_TH:SPEECH_TH;
+  const loud=r>th;
+  if(loud) lastLoudAt=now;
+  if(mode==='ai'){
+    if(BARGE_ENABLED && loud && now-aiStartedAt>BARGE_GRACE_MS && now-lastBargeAt>500){ lastBargeAt=now; doBargeIn(); }
+    return;
+  }
+  if(mode==='processing') return;
+  if(mode==='waiting'){
+    if(loud){ if(!loudSince)loudSince=now; if(now-loudSince>=ONSET_MS){ loudSince=0; startSegment(); } }
+    else loudSince=0;
+    return;
+  }
+  if(mode==='recording'){
+    if(!loud && now-lastLoudAt>SILENCE_MS) stopSegment();
+  }
+}
+function doBargeIn(){
+  appendBubble('sys','打断','（你开口了，面试官停下听你说）');
+  stopAudio(); endAI(); loudSince=0; lastLoudAt=performance.now(); startSegment();
+}
+function startSegment(){
+  if(!micStream) return;
+  clearSilence();          // 用户开口了，撤掉"我在听"的沉默提示
+  chunks=[];
+  try{ recorder=new MediaRecorder(micStream); }catch(e){ appendBubble('sys','录音','录音不可用：'+e.message); return; }
+  recorder.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+  recorder.onerror=()=>{ recording=false; mode='waiting'; setPill('录音出错，已恢复','off'); };
+  recorder.onstop=async()=>{
+    const type=(recorder&&recorder.mimeType)||'audio/webm';
+    const blob=new Blob(chunks,{type});
+    mode='processing'; setPill('识别中…','busy'); $('callState').textContent='识别中…';
+    await sendVoice(blob);
+  };
+  recorder.start(); recording=true; mode='recording';
+  setPill('正在听…（说完自动结束）','rec'); $('callState').textContent='正在听…';
+}
+function stopSegment(){ if(!recording) return; recording=false; try{ recorder.stop(); }catch(e){ mode='processing'; } }
+function blobToBase64(blob){ return new Promise(ok=>{ const fr=new FileReader(); fr.onload=()=>{ const s=String(fr.result); ok(s.slice(s.indexOf(',')+1)); }; fr.readAsDataURL(blob); }); }
+async function sendVoice(blob){
+  if(state!=='incall') return;
+  try{ if(clips.length<40) clips.push({ url:URL.createObjectURL(blob), at:answers.length }); }catch(e){}
+  try{
+    const b64=await blobToBase64(blob);
+    const type=blob.type||''; const fmt=type.includes('webm')?'webm':type.includes('ogg')?'ogg':type.includes('wav')?'wav':'mp3';
+    const r=await apiFetch('/api/voice/asr',{method:'POST',body:JSON.stringify({audio_base64:b64, format:fmt})},45000);
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||j.error){ appendBubble('sys','识别','转写失败：'+(j.error||r.status)); mode='waiting'; setPill('语音待命 · 直接说话','idle'); $('callState').textContent='你的回合，请说话或打字'; return; }
+    const t=(j.text||'').trim();
+    if(!t){ mode='waiting'; setPill('没听清 · 再说一次','idle'); $('callState').textContent='没听清，再说一次？'; return; }
+    await submitAnswer(t);
+  }catch(e){ appendBubble('sys','识别','转写异常：'+friendlyError(e)); mode='waiting'; setPill('语音待命 · 直接说话','idle'); }
+}
+
+// 上传录音兜底（麦克风被禁的环境也能验证转写）
+const af=$('audioFile'); if(af) af.addEventListener('change', async e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  if(state!=='incall'){ appendBubble('sys','提示','请先点「接听」再上传录音'); e.target.value=''; return; }
+  setPill('识别中…','busy');
+  try{
+    const b64=await blobToBase64(f); const ty=f.type||'';
+    const fmt=ty.includes('webm')?'webm':ty.includes('wav')?'wav':ty.includes('ogg')?'ogg':ty.includes('mp4')?'mp4':'mp3';
+    const r=await apiFetch('/api/voice/asr',{method:'POST',body:JSON.stringify({audio_base64:b64,format:fmt})},45000);
+    const j=await r.json().catch(()=>({})); e.target.value='';
+    if(!r.ok||j.error){ appendBubble('sys','识别','转写失败：'+(j.error||r.status)); setPill('语音待命 · 直接说话','idle'); return; }
+    const txt=(j.text||'').trim();
+    if(!txt){ appendBubble('sys','识别','没识别出内容'); setPill('语音待命 · 直接说话','idle'); return; }
+    await submitAnswer(txt);
+  }catch(err){ appendBubble('sys','识别','转写异常：'+friendlyError(err)); setPill('语音待命 · 直接说话','idle'); e.target.value=''; }
+});
+
+$('ansInput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing){const v=e.target.value.trim();if(v){e.target.value='';submitAnswer(v);}} });
+</script>
+</body>
+</html>

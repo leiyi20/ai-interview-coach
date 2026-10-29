@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# 构建脚本与题库源文件不参与检索（仓库已公开，此处仅为避免占用收录位与抓取配额）
+Disallow: /tools/
+Disallow: /data/questions.json
+
+Sitemap: https://ai-interview-58714.app.workbuddy.host/sitemap.xml

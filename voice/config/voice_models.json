@@ -1,0 +1,56 @@
+{
+  "provider": "阿里云百炼 DashScope（北京工作空间）",
+  "verified_at": "2026-10-28T20:12+08:00",
+  "key_prefix": "sk-ws-（工作空间密钥）",
+  "base_url": "https://ws-7dyla2dejq5bj6jb.cn-beijing.maas.aliyuncs.com",
+  "base_url_generic": "https://dashscope.aliyuncs.com",
+  "note_domain": "北京专属域名 {WorkspaceId}.cn-beijing.maas.aliyuncs.com 才能用 v3.5 与同步 base64 ASR；通用域名只能 v3-flash + 异步 ASR。",
+  "models": {
+    "llm": {
+      "id": "qwen3.5-plus",
+      "role": "面试逻辑、生成追问",
+      "endpoint": "/compatible-mode/v1/chat/completions",
+      "required_flags": { "enable_thinking": false, "stream": true },
+      "measured_latency_s": 1.35,
+      "status": "verified"
+    },
+    "asr": {
+      "id": "fun-asr-flash-2026-06-15",
+      "role": "候选人语音转写（麦克风录音）",
+      "endpoint_sync": "/api/v1/services/aigc/multimodal-generation/generation",
+      "headers": { "X-DashScope-SSE": "disable" },
+      "input": "input.messages[].content[].input_audio.data = data:audio/<fmt>;base64,....",
+      "response_text_field": "output.text（或 output.output.sentence.text）",
+      "measured_latency_s": 0.52,
+      "verified_text": "你好，欢迎使用阿里云百炼。",
+      "constraints": [
+        "本工作空间 key 不支持异步（403 does not support asynchronous calls）→ 必须走同步端点",
+        "raw base64 不接受；必须 data URL（data:audio/mpeg;base64,...）",
+        "支持格式含 webm/mp3/wav/ogg；≤5 分钟"
+      ],
+      "status": "verified(sync+base64)"
+    },
+    "tts": {
+      "id_verified": "cosyvoice-v3-flash",
+      "id_target": "cosyvoice-v3.5-flash",
+      "role": "合成面试官语音",
+      "endpoint": "/api/v1/services/audio/tts/SpeechSynthesizer",
+      "voice": "longanyang",
+      "streaming": { "header": "X-DashScope-SSE: enable", "measured_ttfb_s": 0.51 },
+      "price_cny_per_10k_chars": 0.8,
+      "blocker_v35": "cosyvoice-v3.5-flash 的音色与 v3 不通用（longanyang 属 v3-flash）；v3.5 需其专属/克隆音色，官方音色表未列 v3.5 系统音色。暂用 v3-flash（同接口同价位）。",
+      "status": "v3-flash verified / v3.5 pending voice list"
+    }
+  },
+  "voice_loop": {
+    "turns": "麦克风录音 → base64 上传 → fun-asr-flash 同步转写 → qwen3.5-plus 流式追问 → cosyvoice 流式语音",
+    "measured_per_turn_s": 2.3,
+    "breakdown": "ASR 0.52 + LLM 1.35 + TTS 首包 0.51",
+    "client_requirements": "getUserMedia + MediaRecorder（需 HTTPS 或 localhost）；MediaSource 流式播放"
+  },
+  "cost_estimate_cny": {
+    "per_12min_session": "约 0.20-0.30",
+    "budget_cap": 1.0
+  },
+  "security": "API key 仅经环境变量 DASHSCOPE_KEY 注入；用户 BYOK 时逐请求 X-User-Key，服务端不落地。"
+}

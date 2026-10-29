@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
+<title>AI 面试教练 · 真实语音模拟面试</title>
+<meta name="description" content="像接电话一样接受 AI 面试官面试：先读你的简历，再按目标岗位深挖追问，结束后给出七维评估报告。" />
+<meta name="theme-color" content="#0b0f17" />
+<style>
+  :root{
+    --bg:#0b0f17; --bg2:#0f1520; --card:rgba(255,255,255,.045); --line:rgba(255,255,255,.10);
+    --text:#e9edf5; --muted:#8d98ab; --blue:#4f7cff; --blue2:#6d92ff; --teal:#2fbf9b; --warn:#ffb84d;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(900px 600px at 15% -10%, rgba(79,124,255,.20), transparent 60%),
+      radial-gradient(700px 500px at 100% 0%, rgba(47,191,155,.12), transparent 55%),
+      linear-gradient(180deg,#0b0f17 0%,#0a0e15 100%);
+    color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    display:flex; flex-direction:column; min-height:100%;
+  }
+  .wrap{width:100%;max-width:720px;margin:0 auto;padding:clamp(28px,7vh,72px) 22px 40px;flex:1;display:flex;flex-direction:column;justify-content:center}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:26px}
+  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--blue),#2d5be0);display:grid;place-items:center;box-shadow:0 6px 20px rgba(79,124,255,.35)}
+  .logo svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .brand b{font-size:14.5px;letter-spacing:.4px}
+  .brand span{font-size:11.5px;color:var(--muted);margin-left:auto}
+  h1{margin:0 0 12px;font-size:clamp(25px,6vw,34px);line-height:1.25;letter-spacing:-.4px}
+  h1 em{font-style:normal;background:linear-gradient(120deg,var(--blue2),var(--teal));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{margin:0 0 26px;font-size:14px;line-height:1.85;color:var(--muted);max-width:52ch}
+  .lead b{color:#c3cde0;font-weight:500}
+
+  .card{position:relative;display:block;text-decoration:none;color:inherit;border:1px solid var(--line);
+    background:var(--card);border-radius:16px;padding:18px 18px 16px;margin-bottom:12px;
+    transition:transform .18s ease,border-color .18s ease,background .18s ease}
+  .card:hover{transform:translateY(-2px);border-color:rgba(79,124,255,.5);background:rgba(79,124,255,.07)}
+  .card:active{transform:translateY(0)}
+  .card.primary{border-color:rgba(79,124,255,.45);background:linear-gradient(140deg,rgba(79,124,255,.16),rgba(79,124,255,.04))}
+  .card-row{display:flex;align-items:center;gap:13px}
+  .ic{width:42px;height:42px;flex:0 0 42px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid var(--line)}
+  .ic svg{width:20px;height:20px;fill:none;stroke:var(--blue2);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .card.primary .ic{background:rgba(79,124,255,.18);border-color:rgba(79,124,255,.4)}
+  .card.primary .ic svg{stroke:#b9caff}
+  .ttl{font-size:15px;font-weight:600;letter-spacing:.2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .badge{font-size:10.5px;font-weight:500;padding:2px 8px;border-radius:999px;background:rgba(47,191,155,.16);color:#6ee3c4;border:1px solid rgba(47,191,155,.3)}
+  .sub{font-size:12.5px;color:var(--muted);line-height:1.7;margin-top:5px}
+  .arrow{margin-left:auto;color:var(--muted);font-size:17px;flex:0 0 auto}
+
+  .feats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:26px 0 0}
+  .feat{border:1px solid var(--line);background:rgba(255,255,255,.028);border-radius:12px;padding:12px 13px}
+  .feat b{display:block;font-size:12.5px;margin-bottom:4px;font-weight:600}
+  .feat span{font-size:11.5px;color:var(--muted);line-height:1.65}
+  .foot{margin-top:26px;font-size:11px;line-height:1.8;color:#6b7788;border-top:1px solid var(--line);padding-top:14px}
+  .foot a{color:#8d98ab}
+  @media(max-width:520px){.feats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="brand">
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    <b>AI 面试教练</b>
+    <span>语音 · 简历定制</span>
+  </div>
+
+  <h1>像接电话一样，<br />来一场<em>真的</em>模拟面试</h1>
+  <p class="lead">
+    AI 面试官会先读你的简历，按目标岗位找出该深挖的点，然后用<b>语音</b>和你实时对话——
+    你答得越具体，它追得越深。结束后给一份七维评估报告，标出简历里没讲透的地方。
+  </p>
+
+  <a class="card primary" href="/site/index.html">
+    <div class="card-row">
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg></div>
+      <div>
+        <div class="ttl">上传简历，定制一场面试 <span class="badge">推荐</span></div>
+        <div class="sub">选岗位 → 选档位 → 传简历（可跳过）→ 匹配分析 → 开始面试</div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </a>
+
+  <a class="card" href="/live.html">
+    <div class="card-row">
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+      <div>
+        <div class="ttl">立刻语音面试</div>
+        <div class="sub">不用简历，选个岗位直接开始 · 适合先试试手感</div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </a>
+
+  <a class="card" href="/site/index.html">
+    <div class="card-row">
+      <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></div>
+      <div>
+        <div class="ttl">文字面试（不戴耳机也能用）</div>
+        <div class="sub">同样的题库与评分，逐题作答，适合安静环境或设备不便时</div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </a>
+
+  <div class="feats">
+    <div class="feat"><b>按简历深挖</b><span>直接问你简历里写得含糊、值得追问的地方</span></div>
+    <div class="feat"><b>实时语音对话</b><span>停顿自动断句，你可以随时插话打断</span></div>
+    <div class="feat"><b>七维评估报告</b><span>含关键片段回放，能听自己的原声</span></div>
+    <div class="feat"><b>隐私可控</b><span>简历不出浏览器，通话结束即可删除</span></div>
+  </div>
+
+  <p class="foot">
+    这是面试练习工具，AI 评价仅供参考，不构成任何录用结论。语音能力由第三方模型提供，
+    使用你自己的 API Key 时，调用消耗由该密钥账号承担。
+  </p>
+</main>
+</body>
+</html>
