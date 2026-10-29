@@ -10,3 +10,4 @@ ehthumbs.db
 
 # 数据合并备份（本地工具生成，不入库）
 data/*.bak-*
+nul
